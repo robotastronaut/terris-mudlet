@@ -1,0 +1,14 @@
+[
+  {
+    "name": "TemplateProject_example_script",
+    "eventHandlerList": [
+      "sysInstall"
+    ]
+  },
+  {
+    "name": "arrivalHandler",
+    "eventHandlerList": [
+      "arrivalReceived"
+    ]
+  }
+]

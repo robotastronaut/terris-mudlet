@@ -1,0 +1,5 @@
+.vscode/
+build/
+doc/
+.output
+terris-gmcp.lua

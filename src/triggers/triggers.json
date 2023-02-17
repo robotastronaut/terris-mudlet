@@ -1,0 +1,11 @@
+[
+  {
+    "name": "TerrisCommsTrigger", 
+    "patterns": [ 
+      {
+        "pattern": "\\[(?<code>\\w)\\](?<msg>.*)",
+        "type": "regex"
+      } 
+    ] 
+  }
+]
