@@ -30,12 +30,12 @@ function Comms:new(channels, events, parent)
   setmetatable(me, self)
   self.__index = self
 
-  for chan, label in pairs(channels) do
-    if label == nil or type(label) ~= "string" then
-      error("Comms:new() error: channels expected to be table of string/string pairs, got: "..type(label))
+  for i, chan in ipairs(channels) do
+    if type(chan) ~= "table" or chan.label == nil or type(chan.label) ~= "string" then
+      error("Comms:new() error: invalid channels")
     else
-      me.channels[chan] = Channel:new(chan, label, me)
-      me.positions[#me.positions+1] = chan
+      me.channels[chan.name] = Channel:new(chan.name, chan.label, chan.enabled, me)
+      me.positions[#me.positions+1] = chan.name
     end
   end
   
@@ -111,13 +111,13 @@ function Comms:render()
     end
   end
   
-  self:controls()
+  -- self:controls()
   
-  for i, name in ipairs(self.positions) do
-    if self.channels[name] ~= nil then
-      self.channels[name]:controls()
-    end
-  end
+  -- for i, name in ipairs(self.positions) do
+  --   if self.channels[name] ~= nil then
+  --     Comms.channelControls(self.channels[name])
+  --   end
+  -- end
 
 end
 

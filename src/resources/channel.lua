@@ -4,7 +4,7 @@ local resourcesDir = (...):match("(.-)[^%.]+$")
 local Core = require(resourcesDir .. "core")
 
 
-function Channel:new(name, label, parent)
+function Channel:new(name, label, enabled, parent)
 
   if name and type(name) ~= "string" then
     error("Channel:new(name, label, parent): Argument error, expected name to be of type string, got " .. type(name))
@@ -13,12 +13,12 @@ function Channel:new(name, label, parent)
     error("Channel:new(name, label, parent): Argument error, expected label to be of type string, got " .. type(name))
   end
   local me = {
-    enabled = true,
     container = {},
     components = {},
   }
-
+  debugc("CREATING CHANNEL "..name.." ("..tostring(enabled)..")")
   me.name = name
+  me.enabled = enabled
   me.parent = parent
   me.label = label
 
@@ -41,7 +41,7 @@ function Channel:enable()
     self:render()
   end
   if not self.enabled then
-    self.components.toggle:echo("hide", nil, "c")
+    -- self.components.toggle:echo("hide", nil, "c")
     self.parent.container:add(self.container)
     self.container:show()
     self.enabled = true
@@ -50,125 +50,21 @@ function Channel:enable()
 end
 
 function Channel:disable()
-  if self.enabled then
-    self.components.toggle:echo("show", nil, "c")
-    self.container:hide()
-    self.parent.container:remove(self.container)
-    self.enabled = false
-    self.parent.container:organize()
-  end
+  -- self.components.toggle:echo("show", nil, "c")
+  self.container:hide()
+  self.parent.container:remove(self.container)
+  self.enabled = false
+  self.parent.container:organize()
 end
 
 function Channel:write(msg)
   if not self.enabled then
-    debugc("Channel:write skipping") 
+    debugc("Channel:write skipping")
     return false
   end
-  
-  self.components.console:hecho(Core.Colors.TerrisToHex(msg).."\n")
+    self.components.console:decho(copy2decho().."\n")
+  -- self.components.console:hecho(Core.Colors.TerrisToHex(msg).."\n")
   return true
-end
-
--- TODO: Refactor this out. Poorly designed.
-function Channel:controls()
-  local controlName = "terris.comms.controls." .. self.name
-  debugc(controlName.." setup")
-  -- TODO: Add checks to ensure parent has this field
-  -- options to layoutDir are the direction the window should go (R for right, L for left, T for top, B for bottom), followed by how the nested labels should be oriented (V for vertical or H for horizontal). So "BH" here means it'll go on the bottom of the label, while expanding horizontally
-  self.components.control = self.parent.components.controlMenu:addChild({ name = controlName, height = "1.5c",
-    width = "15c", layoutDir = "BH", flyOut = true, message = "<center>" .. self.label .. "</center>" })
-  self.components.control:setStyleSheet(
-    [[background-color: black;  border-width: 1px;  border-style: solid;  border-color: white;]])
-  self.components.control:setCursor("PointingHand")
-
-  self.components.toggle = self.components.control:addChild({
-    name = controlName .. ".toggle",
-    height = "1.5c",
-    width = "5c",
-    layoutDir = "BH"
-  })
-
-  self.components.toggle:setStyleSheet([[
-          QLabel{
-            background-color: black;
-            padding: 2px;
-            border-width: 1px;
-            border-style: solid;
-            border-color: white;
-          }
-          QLabel::hover{
-            background-color: #595959;
-          }
-
-        ]])
-  self.components.toggle:setCursor("PointingHand")
-
-  if self.enabled then
-    self.components.toggle:echo('hide', nil, 'c')
-  else
-    self.components.toggle:echo('show', nil, 'c')
-  end
-
-  self.components.toggle:setClickCallback(function()
-    self:toggle()
-  end)
-
-  self.components.moveLeft = self.components.control:addChild({
-    name = controlName .. ".moveLeft",
-    message = "<center>◄</center>",
-    width = "5c",
-    height = "1.5c",
-    layoutDir = "BH"
-  })
-
-  self.components.moveLeft:setClickCallback(function()
-    self.parent:shiftLeft(self.container.name)
-  end)
-
-
-
-  self.components.moveLeft:setStyleSheet([[
-          QLabel{
-            background-color: black;
-            padding: 2px;
-            border-width: 1px;
-            border-style: solid;
-            border-color: white;
-          }
-          QLabel::hover{
-            background-color: #595959;
-          }
-
-        ]])
-  self.components.moveLeft:setCursor("PointingHand")
-
-  self.components.moveRight = self.components.control:addChild({
-    name = controlName .. ".moveRight",
-    message = "<center>►</center>",
-    width = "5c",
-    height = "1.5c",
-    layoutDir = "BH"
-  })
-
-  self.components.moveRight:setClickCallback(function()
-    self.parent:shiftRight(self.container.name)
-  end)
-
-
-  self.components.moveRight:setStyleSheet([[
-          QLabel{
-            background-color: black;
-            padding: 2px;
-            border-width: 1px;
-            border-style: solid;
-            border-color: white;
-          }
-          QLabel::hover{
-            background-color: #595959;
-          }
-
-        ]])
-  self.components.moveRight:setCursor("PointingHand")
 end
 
 function Channel:render()
@@ -198,6 +94,58 @@ function Channel:render()
     height = "1c",
     message = [[<center>]]..self.label..[[</center>]],
   }, self.container)
+
+  local controlName = "terris.comms.controls." .. self.name
+  
+  self.components.moveLeft = Geyser.Label:new({
+    name = controlName..".moveLeft",
+    y = 0,
+    x = "-5c",
+    width = "1c",
+    height = "1c",
+    message = [[<center>◄</center>]],
+  }, self.container)
+
+
+  self.components.moveLeft:setCursor("PointingHand")
+
+  self.components.moveLeft:setClickCallback(function()
+    self.parent:shiftLeft(self.container.name)
+  end)
+
+
+  self.components.moveRight = Geyser.Label:new({
+    name = controlName .. ".moveRight",
+    y = 0,
+    x = "-3c",
+    message = "<center>►</center>",
+    width = "1c",
+    height = "1c",
+  }, self.container)
+
+  self.components.moveRight:setClickCallback(function()
+    self.parent:shiftRight(self.container.name)
+  end)
+  self.components.moveRight:setCursor("PointingHand")
+
+
+  self.components.toggle = Geyser.Label:new({
+    name = controlName .. ".toggle",
+    y = 0,
+    x = "-1c",
+    message = "<center>x</center>",
+    width = "1c",
+    height = "1c",
+  }, self.container)
+
+  self.components.toggle:setClickCallback(function()
+    self:disable()
+  end)
+
+  self.components.toggle:setCursor("PointingHand")
+
+  if not self.enabled then self:disable() end
+
 end
 
 return Channel

@@ -170,14 +170,14 @@ core.Spells = {
 core.Comms = {
   Trigger = "terris.triggers.comms",
   Channels = {
-    shouts = "Shouts",
-    chat = "Chat",
-    csh = "City",
-    tells = "Tell",
-    tsh = "Temple",
-    hhsh = "Household",
-    gsh = "Guild",
-    events = "Events",
+    {name = "shouts", label = "Shouts", enabled = true},
+    {name = "chat", label = "Chat", enabled = false},
+    {name = "gsh", label = "Guild", enabled = false},
+    {name = "tsh", label = "Temple", enabled = false},
+    {name = "hhsh", label = "Household", enabled = false},
+    {name = "csh", label = "City", enabled = false},
+    {name = "tells", label = "Tell", enabled = true},
+    {name = "events", label = "Events", enabled = true},
   },
   Events = {
     C = { name = "terris.events.comms.chat", channels = {"chat", "shouts"}},

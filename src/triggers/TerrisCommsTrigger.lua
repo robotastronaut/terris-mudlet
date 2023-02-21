@@ -1,4 +1,4 @@
-local core = require("__PKGNAME__.Core")
+local core = require("__PKGNAME__.core")
 
 local event = core.Comms.Events[matches.code]
 
