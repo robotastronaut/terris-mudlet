@@ -65,5 +65,5 @@ db:create("terris_wiz", {
 
 
 
-TerrisWizard = Wizard:new({}, Core)
-TerrisWizard:render()
+-- TerrisWizard = Wizard:new({}, Core)
+-- TerrisWizard:render()
