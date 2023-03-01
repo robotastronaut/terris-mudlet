@@ -139,6 +139,9 @@ function Dockable.Container:onRelease (label, event)
           self.get_y()
         )
         adjustInfo = {}
+        if self.container.type == "dockable.insider" then
+            self.container:organize()
+        end
     end
 end
 
@@ -183,67 +186,97 @@ function Dockable.Container:onMove (label, event)
         end
     end
 
-    if adjustInfo.x and adjustInfo.name == label.name then  
+    if adjustInfo.x and adjustInfo.name == label.name then
         self:adjustBorder()
         local x, y = getMousePosition()
         local winw, winh = getMainWindowSize()
         local x1, y1, w, h = self.get_x(), self.get_y(), self:get_width(), self:get_height()
+        
+        -- Get container-local coordinates
         if (self.container) and (self.container ~= Geyser) then
             x1,y1 = x1-self.container.get_x(), y1-self.container.get_y()
             winw, winh = self.container.get_width(), self.container.get_height()
         end
+        -- Get x, y changes
         local dx, dy = adjustInfo.x - x, adjustInfo.y - y
-        local max, min = math.max, math.min
-        local hasScrollBox = self.windowname and Geyser.parentWindows and Geyser.parentWindows[self.windowname] and Geyser.parentWindows[self.windowname].type == "scrollBox"
-        if adjustInfo.move and not self.connectedContainers then
-            label:setCursor("ClosedHand")
-            local tx, ty = max(0,x1-dx), max(0,y1-dy)
-            -- get rid of move/size limits when in scrollbox (as it is scrollable)
-            if not(hasScrollBox) then
-                tx, ty = min(tx, winw - w), min(ty, winh - h)
+        
+
+        -- If this is happening to a child of another Dockable, we need to let the container manage the change
+        if self.container.type == "dockable.insider" then
+            -- Resize
+            if adjustInfo.move then 
+                label:setCursor("ClosedHand")
+                self.container:move_dockable(self, adjustInfo, dx, dy)
+            elseif adjustInfo.move == false then
+                self.container:resize_dockable(self, adjustInfo, dx, dy)
             end
-            tx = make_percent(tx/winw)
-            ty = make_percent(ty/winh)
-            self:move(tx, ty)
-            --[[
-            -- automated lock on border deactivated for now
-            if x1-dx <-5 then self:attachToBorder("left") end
-            if y1-dy <-5 then self:attachToBorder("top") end
-            if winw - w < tx+0.1 then self:attachToBorder("right") end
-            if winh - h < ty+0.1 then self:attachToBorder("bottom") end--]]
-        elseif adjustInfo.move == false then
-            local w2, h2, x2, y2 = w - dx, h - dy, x1 - dx, y1 - dy
-            local tx, ty, tw, th = x1, y1, w, h
-            if adjustInfo.top then
-                ty, th = y2, h + dy
-            elseif adjustInfo.bottom then
-                th = h2
-            end
-            if adjustInfo.left then
-                tx, tw = x2, w + dx
-            elseif adjustInfo.right then
-                tw = w2
-            end
-            tx, ty, tw, th = max(0,tx), max(0,ty), max(10,tw), max(10,th)
-            if not(hasScrollBox) then
-                tw, th = min(tw, winw), min(th, winh)
-                tx, ty = min(tx, winw-tw), min(ty, winh-th)
-            end
-            tx = make_percent(tx/winw)
-            ty = make_percent(ty/winh)
-            self:move(tx, ty)
-            local minw, minh = 0,0
-            if (self.container == Geyser or self.container.type == "dockable.insider") and not self.noLimit then minw, minh = 75,25 end
-            tw,th = max(minw,tw), max(minh,th)
-            tw,th = make_percent(tw/winw), make_percent(th/winh)
-            self:resize(tw, th)
-            if self.connectedContainers then
-                self:adjustConnectedContainers()
-            end
-            if self.container.type == "dockable.insider" then
-              if self.container.direction == "vertical" then self.v_policy = Geyser.Fixed end
-              if self.container.direction == "horizontal" then self.h_policy = Geyser.Fixed end
-              self.container:organize()
+        else        
+            -- helpers
+            local max, min = math.max, math.min
+
+            -- Check if container has a scrollbox
+            local hasScrollBox = self.windowname and Geyser.parentWindows and Geyser.parentWindows[self.windowname] and Geyser.parentWindows[self.windowname].type == "scrollBox"
+
+            -- Move
+            if adjustInfo.move and not self.connectedContainers then
+                label:setCursor("ClosedHand")
+                local tx, ty = max(0,x1-dx), max(0,y1-dy)
+                -- get rid of move/size limits when in scrollbox (as it is scrollable)
+                if not(hasScrollBox) then
+                    tx, ty = min(tx, winw - w), min(ty, winh - h)
+                end
+                tx = make_percent(tx/winw)
+                ty = make_percent(ty/winh)
+                self:move(tx, ty)
+                --[[
+                -- automated lock on border deactivated for now
+                if x1-dx <-5 then self:attachToBorder("left") end
+                if y1-dy <-5 then self:attachToBorder("top") end
+                if winw - w < tx+0.1 then self:attachToBorder("right") end
+                if winh - h < ty+0.1 then self:attachToBorder("bottom") end--]]
+            
+            -- Resize
+            elseif adjustInfo.move == false then
+                -- target initial values from original x,y,w,h
+                local tx, ty, tw, th = x1, y1, w, h
+
+                -- new calculated x,y,w,h
+                local w2, h2, x2, y2 = w - dx, h - dy, x1 - dx, y1 - dy
+                
+                if adjustInfo.top then
+                    -- if the change is to the top, then set the target y and height
+                    -- y is set because the anchor point is on the top, and we need to set it here or
+                    -- the bottom will move
+                    ty, th = y2, h + dy
+                elseif adjustInfo.bottom then
+                    -- if the change is to the bottom, only adjust the height
+                    th = h2
+                end
+
+                if adjustInfo.left then
+                    tx, tw = x2, w + dx
+                elseif adjustInfo.right then
+                    tw = w2
+                end
+                tx, ty, tw, th = max(0,tx), max(0,ty), max(10,tw), max(10,th)
+                if not(hasScrollBox) then
+                    tw, th = min(tw, winw), min(th, winh)
+                    tx, ty = min(tx, winw-tw), min(ty, winh-th)
+                end
+
+                tx = make_percent(tx/winw)
+                ty = make_percent(ty/winh)
+                
+                self:move(tx, ty)
+                
+                local minw, minh = 0,0
+                if (self.container == Geyser or self.container.type == "dockable.insider") and not self.noLimit then minw, minh = 75,25 end
+                tw,th = max(minw,tw), max(minh,th)
+                tw,th = make_percent(tw/winw), make_percent(th/winh)
+                self:resize(tw, th)
+                if self.connectedContainers then
+                    self:adjustConnectedContainers()
+                end
             end
         end
         
@@ -673,21 +706,20 @@ function Dockable.Container:restore()
         self:resize(nil,self.origh)
         self.origy = self.origy or y1 - self:get_height() + offset
         self:move(nil, self.origy)
-        self.v_policy = self.origPolicy or Geyser.Dynamic
       elseif self.minimizeDirection == "right" then
         local x = self:get_x()
         self:resize(self.origw,nil)
         self.origx = self.origx or x1 - self:get_width() + offset
         self:move(self.origx, nil)
-        self.h_policy = self.origPolicy or Geyser.Dynamic
       elseif self.minimizeDirection == "left" then
         self:resize(self.origw,nil)
-        self.h_policy = self.origPolicy or Geyser.Dynamic
       else
         self:resize(nil,self.origh)
-        self.v_policy = self.origPolicy or Geyser.Dynamic
       end
       
+      -- Always reset to dynamic on restore from minimize
+      self.v_policy = Geyser.Dynamic
+      self.h_policy = Geyser.Dynamic
       
       self.minimized = false
       self:adjustBorder()
@@ -1230,6 +1262,11 @@ function Dockable.Container:new(cons,container)
     me:setTitle()
     me.lockStyle = me.lockStyle or "standard"
     me.noLimit = me.noLimit or false
+    me.minw = me.minw or 0
+    me.minh = me.minh or 0
+    
+    if (me.container == Geyser or me.container.type == "dockable.insider") and not me.noLimit then me.minw, me.minh = 75,30 end
+    
     if not(me.raiseOnClick == false) then
         me.raiseOnClick = true
     end
@@ -1287,11 +1324,11 @@ function Dockable.Container:new(cons,container)
     -- TODO: Make this configurable
     -- Keeping it clear
     me.lockedSides = {}
-    if me.container.organized == "horizontal" then
+    if me.container.direction == "horizontal" then
         me.lockedSides[#me.lockedSides+1] = "top"
         me.lockedSides[#me.lockedSides+1] = "bottom"
     end
-    if me.container.organized == "vertical" then
+    if me.container.direction == "vertical" then
         me.lockedSides[#me.lockedSides+1] = "right"
         me.lockedSides[#me.lockedSides+1] = "left"
     end
@@ -1350,6 +1387,14 @@ function resetChildren(container)
     window.v_policy = Geyser.Dynamic
   end
   container:organize()
+end
+
+function Dockable.Container:MinHeight()
+    return self.minh or 0
+end
+
+function Dockable.Container:MinWidth()
+    return self.minw or 0
 end
 
 return Dockable
