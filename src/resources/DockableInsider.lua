@@ -12,12 +12,10 @@ end
 
 function Insider:add (window, cons)
   if self.useAdd2 then
-    display("ADD2 window")
-    display(window.name)
-    Geyser.add2(self, window, cons)
+    display("INSIDER:ADD2 ("..self.useAdd2.."): "..window.name)
+    Geyser.add2(self, window, cons, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
   else
-    display("ADD window")
-    display(window.name)
+    display("INSIDER:ADD ("..self.useAdd2.."): "..window.name)
     Geyser.add(self, window, cons)
   end
   if not self.defer_updates then

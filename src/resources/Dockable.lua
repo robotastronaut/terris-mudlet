@@ -517,7 +517,7 @@ function Dockable.Container:createContainers()
         y = "0",
         height = "100%",
         width = "100%",
-        name = self.name.."adjLabel"
+        name = self.name..".adjLabel"
     },self)
 
     self.Inside = Dockable.Insider:new({
@@ -525,7 +525,7 @@ function Dockable.Container:createContainers()
         y = self.padding*2,
         height = "-"..self.padding,
         width = "-"..self.padding,
-        name = self.name.."InsideContainer",
+        name = self.name..".InsideContainer",
         direction = self.organized,
     },self)
     
@@ -818,22 +818,23 @@ end
 -- @param cons derives from the original Geyser.Container:add function
 function Dockable.Container:add(window, cons)
     if self.goInside then
-        display("ADD TO INSIDE")
-        display(window.name)
+        
         if self.useAdd2 == false then
+            display("ADD TO INSIDE (false): "..window.name)
             self.Inside:add(window, cons)
         else
+            display("ADD TO INSIDE (true): "..window.name)
             --add2 inheritance set to true
-            self.Inside:add2(window, cons, true)
+            self.Inside:add2(window, cons, true, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
         end
     else
-        display("ADD TO SELF")
-        display(window.name)
         if self.useAdd2 == false then
+            display("ADD TO SELF (false): "..window.name)
            Geyser.add(self, window, cons)
         else
+            display("ADD TO SELF (true): "..window.name)
             --add2 inheritance set to true
-            self:add2(window, cons, true)
+            self:add2(window, cons, true, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
         end
     end
     
