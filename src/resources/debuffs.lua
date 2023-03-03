@@ -38,7 +38,7 @@ function Debuffs:render()
 
   self.components.console = Geyser.MiniConsole:new({
     x = 0,
-    y = "1.5c",
+    y = 0,
     name = "terris.widgets.debuffs.console",
     color = "#00000000",
     width = "100%",

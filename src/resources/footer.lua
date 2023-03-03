@@ -12,7 +12,7 @@ local Dockable = require(resourcesDir .. "Dockable")
 function Footer:new(layout, parent)
   local me = {
     layout = {
-      height = 125,
+      height = 250,
       width = 15,
     },
     container = {},
@@ -45,7 +45,9 @@ function Footer:render()
     width = "100%",
     height = self.layout.height,
     organized = Dockable.Horizontal,
-    titleText = "Console"
+    titleText = "Console",
+    minimizeDirection = "bottom",
+    permanentBorders = {"bottom"}
   })
 
   self.container:attachToBorder("bottom")

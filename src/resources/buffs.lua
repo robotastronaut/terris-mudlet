@@ -36,8 +36,7 @@ function Buffs:render()
   }, self.parent.container)
   
   self.components.console = Geyser.MiniConsole:new({
-    x = 0,
-    y = "1.5c",
+    x = 0, y = 0,
     name = "terris.widgets.buffs.console",
     color = "#00000000",
     width = "100%",

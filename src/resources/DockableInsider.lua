@@ -12,10 +12,8 @@ end
 
 function Insider:add (window, cons)
   if self.useAdd2 then
-    display("INSIDER:ADD2 ("..self.useAdd2.."): "..window.name)
     Geyser.add2(self, window, cons, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
   else
-    display("INSIDER:ADD ("..self.useAdd2.."): "..window.name)
     Geyser.add(self, window, cons)
   end
   if not self.defer_updates then
@@ -170,7 +168,7 @@ function Insider:reposition()
   end
 end
 
-function Insider:shift_right (name)
+function Insider:shift_right(name)
     local index = table.index_of(self.windows, name)
     if index == #self.windows or index == nil then
       return false
@@ -181,7 +179,7 @@ function Insider:shift_right (name)
     return true
 end
 
-function Insider:shift_left (name)
+function Insider:shift_left(name)
   local index = table.index_of(self.windows, name)
   if index == 1 or index == nil then
     return false

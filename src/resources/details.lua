@@ -65,7 +65,7 @@ function Details:gold()
 
   self.components.goldLabel:setStyleSheet[[
     QLabel{
-      background-color: #000;
+      background-color: rgba(0,0,0,0%);
       qproperty-alignment: 'AlignRight';
       margin-right: 2%;
     }
@@ -73,7 +73,7 @@ function Details:gold()
 
   self.components.goldValueLabel:setStyleSheet[[
     QLabel{
-      background-color: #000;
+      background-color: rgba(0,0,0,0%);
     }
   ]]
 end
@@ -118,15 +118,31 @@ function Details:hands()
 
   self.components.lhValueLabel:setClickCallback(Details.exleft)
 
+  self.components.lhLabel:setStyleSheet[[
+    QLabel{
+      background-color: rgba(0,0,0,0%);
+      qproperty-alignment: 'AlignRight';
+      margin-right: 2%;
+    }
+  ]]
+
+  self.components.rhLabel:setStyleSheet[[
+    QLabel{
+      background-color: rgba(0,0,0,0%);
+      qproperty-alignment: 'AlignRight';
+      margin-right: 2%;
+    }
+  ]]
+
   self.components.rhValueLabel:setStyleSheet[[
     QLabel{
-      background-color: #000;
+      background-color: rgba(0,0,0,0%);
     }
   ]]
 
   self.components.lhValueLabel:setStyleSheet[[
     QLabel{
-      background-color: #000;
+      background-color: rgba(0,0,0,0%);
     }
   ]]
 end

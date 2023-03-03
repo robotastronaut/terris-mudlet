@@ -74,10 +74,7 @@ function Dockable.Container:setTitle(text, color, format)
     self.titleFormat = format or self.titleFormat or "c"
     self.titleText = text or self.titleText or string.format("%s - Dockable Container")
     self.titleTxtColor = color or self.titleTxtColor or "white"
-    if self.locked and self.connectedContainers then
-        return
-    end
-    self.adjLabel:echo(string.format("&nbsp;&nbsp;%s", self.titleText), self.titleTxtColor, self.titleFormat)
+    self.titleLabel:echo(self.titleText, self.titleTxtColor, self.titleFormat)
 end
 
 
@@ -107,13 +104,6 @@ function Dockable.Container:onClick(label, event)
         adjust_Info(self, label, event)
     end
     if event.button == "RightButton" then
-        --if not in the Geyser main window attach Label is not needed and will be removed
-        if self.container ~= Geyser and table.index_of(self.rCLabel.nestedLabels, self.attLabel) then
-            label:hideMenuLabel("attLabel")
-            -- if we are back to the Geyser main window attach Label will be re-added
-        elseif self.container == Geyser and not table.index_of(self.rCLabel.nestedLabels, self.attLabel) then
-            label:showMenuLabel("attLabel") 
-        end
 
         if not self.customItemsLabel.nestedLabels then
             label:hideMenuLabel("customItemsLabel")
@@ -512,21 +502,30 @@ end
 
 -- creates the adjustable label and the container where all the elements will be put in
 function Dockable.Container:createContainers()
+
+    self.titleLabel = Geyser.Label:new({
+        x = self.padding,
+        y = self.padding,
+        height = "1.5c",
+        width = "100%",
+        name = self.name..".titleLabel"
+    },self)
+
+    self.Inside = Dockable.Insider:new({
+        x = self.padding,
+        y = self.titleLabel:get_y() - self:get_y() + self.titleLabel:get_height(),
+        height = "-"..self.padding,
+        width = "-"..self.padding,
+        name = self.name..".InsideContainer",
+        direction = self.organized,
+    },self)
+
     self.adjLabel = Geyser.Label:new({
         x = "0",
         y = "0",
         height = "100%",
         width = "100%",
         name = self.name..".adjLabel"
-    },self)
-
-    self.Inside = Dockable.Insider:new({
-        x = self.padding,
-        y = self.padding*2,
-        height = "-"..self.padding,
-        width = "-"..self.padding,
-        name = self.name..".InsideContainer",
-        direction = self.organized,
     },self)
     
 end
@@ -563,7 +562,6 @@ function Dockable.Container:lockContainer(lockNr, lockStyle)
     if self.minimized == false then
         self.lockStyles[lockStyle][2](self)
         if self.allowClose then self.exitLabel:hide() end
-        self.minimizeLabel:hide()
         self.locked = true
         self:adjustBorder()
     end
@@ -582,8 +580,11 @@ end
 -- what means that the container is moveable/resizable by mouse again 
 function Dockable.Container:unlockContainer()
     closeAllLevels(self.rCLabel)
+
+    self.titleLabel:resize("-"..self.padding)
     self.Inside:resize("-"..self.padding,"-"..self.padding)
-    self.Inside:move(self.padding, self.padding*2)
+    self.titleLabel:move(self.padding, self.padding)
+    self.Inside:move(self.padding, self.titleLabel:get_y() - self:get_y() + self.titleLabel:get_height())
     self.adjLabel:setStyleSheet(self.adjLabelstyle)
     if self.allowClose then self.exitLabel:show() end
     self.minimizeLabel:show()
@@ -629,18 +630,6 @@ function Dockable.Container:onClickMin()
     end
 end
 
--- internal function: onClick save event
-function Dockable.Container:onClickSave()
-    closeAllLevels(self.rCLabel)
-    self:save()
-end
-
--- internal function: onClick load event
-function Dockable.Container:onClickLoad()
-    closeAllLevels(self.rCLabel)
-    self:load()
-end
-
 --- minimizes the container
 -- hides everything beside the title
 function Dockable.Container:minimize()
@@ -677,7 +666,7 @@ function Dockable.Container:minimize()
     else
       self:resize(nil, newSize)
       self.origPolicy = self.v_policy
-      self.v_policy = Geyser.Fixed 
+      self.v_policy = Geyser.Fixed
     end
     
     self.minimized = true
@@ -736,22 +725,7 @@ local function createMenus(self, parent, name, func)
     label:setMenuAction(parent.."."..name, func, self, name)
 end
 
--- internal function: Handler for the onEnter event of the attach menu
--- the attach menu will be created with the valid positions onEnter of the mouse
-function Dockable.Container:onEnterAtt()
-    local attm = self:validAttachPositions()
-    self.attLabel.nestedLabels = {}
-    for i=1,#attm do
-        if self.att[i].container ~= Geyser then
-            self.att[i]:changeContainer(Geyser)
-        end
-        self.att[i].flyDir = self.attLabel.flyDir
-        self.att[i]:echo("<center>"..self.Locale[attm[i]].message, "nocolor")
-        self.att[i]:setClickCallback("Dockable.Container.attachToBorder", self, attm[i])
-        self.attLabel.nestedLabels[#self.attLabel.nestedLabels+1] = self.att[i]
-    end
-    doNestShow(self.attLabel)
-end
+
 
 -- internal function to create the Minimize/Close and the right click Menu Labels
 function Dockable.Container:createLabels()
@@ -776,8 +750,25 @@ end
 
 -- internal function to create the right click menu
 function Dockable.Container:createRightClickMenu()
-    self.adjLabel:createRightClickMenu(
-        {MenuItems = {"lockLabel", "minLabel", "saveLabel", "loadLabel", "attLabel", {"att1","att2","att3","att4"}, "lockStylesLabel",{}, "customItemsLabel",{}},
+    local items = { "lockLabel", "minLabel"}
+
+    for k, m in pairs(self.customMenus) do
+        if type(k) == "string" and type(m) == "table" then
+            items[#items+1] = "customMenu"..k
+        end
+    end
+
+    -- createMenus(self, "customItemsLabel", name, function (arg1, arg2)
+    --     self:customMenu(arg2)
+    -- end)
+
+    items[#items+1] = "lockStylesLabel"
+    items[#items+1] = {}
+    items[#items+1] = "customItemsLabel"
+    items[#items+1] = {}
+
+    self.adjLabel:createRightClickMenu({
+        MenuItems = items,
         Style = self.menuStyleMode,
         MenuStyle = self.menustyle,
         MenuWidth = self.ParentMenuWidth,
@@ -785,15 +776,19 @@ function Dockable.Container:createRightClickMenu()
         MenuHeight = self.MenuHeight,
         MenuFormat = "l"..self.MenuFontSize,
         MenuFormat2 = "c"..self.MenuFontSize,
-        }
-        )
+    })
+
     self.rCLabel = self.adjLabel.rightClickMenu
     for k,v in pairs(self.rCLabel.MenuLabels) do
         self[k] = v
     end
-    for k,v in ipairs(self.rCLabel.MenuLabels["attLabel"].MenuItems) do
-        self.att[k] = self.rCLabel.MenuLabels["attLabel"].MenuLabels[v]
-    end
+
+    -- for k, m in pairs(self.customMenus) do
+    --     if type(k) == "string" and type(m) == "table" then
+    --         items[#items+1] = "customMenu"..k
+    --     end
+    -- end
+
 end
 
 -- internal function to set the text on the right click menu labels
@@ -820,19 +815,15 @@ function Dockable.Container:add(window, cons)
     if self.goInside then
         
         if self.useAdd2 == false then
-            display("ADD TO INSIDE (false): "..window.name)
             self.Inside:add(window, cons)
         else
-            display("ADD TO INSIDE (true): "..window.name)
             --add2 inheritance set to true
             self.Inside:add2(window, cons, true, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
         end
     else
         if self.useAdd2 == false then
-            display("ADD TO SELF (false): "..window.name)
            Geyser.add(self, window, cons)
         else
-            display("ADD TO SELF (true): "..window.name)
             --add2 inheritance set to true
             self:add2(window, cons, true, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
         end
@@ -849,134 +840,6 @@ function Dockable.Container:show(auto)
     closeAllLevels(self.rCLabel)
 end
 
---- saves your container settings
--- like position/size and some other variables in your Mudlet Profile Dir/ AdjustableContainer 
--- to be reliable it is important that the Dockable.Container has an unique 'name'
--- @param slot defines a save slot for example a number (1,2,3..) or a string "backup" [optional]
--- @param dir defines save directory [optional]
--- @see Dockable.Container:load
-function Dockable.Container:save(slot, dir)
-    assert(slot == nil or type(slot) == "string" or type(slot) == "number", "Dockable.Container.save: bad argument #1 type (slot as string or number expected, got "..type(slot).."!)")
-    assert(dir == nil or type(dir) == "string" , "Dockable.Container.save: bad argument #2 type (directory as string expected, got "..type(dir).."!)")
-    dir = dir or self.defaultDir
-    local saveDir = string.format("%s%s.lua", dir, self.name)
-    local mainTable = {}
-    mainTable.slot = {}
-    local mytable = {}
-
-    -- check if there are already saved settings and if so load them to the mainTable
-    if io.exists(saveDir) then
-        table.load(saveDir, mainTable)
-    end
-
-    if slot then
-        mainTable.slot[slot] = mytable
-    else
-        mytable = mainTable
-    end
-
-    mytable.x = self.x
-    mytable.y = self.y
-    mytable.height= self.height
-    mytable.width= self.width
-    mytable.minimized= self.minimized
-    mytable.origh= self.origh
-    mytable.locked = self.locked
-    mytable.attached = self.attached
-    mytable.lockStyle = self.lockStyle
-    mytable.padding = self.padding
-    mytable.attachedMargin = self.attachedMargin
-    mytable.hidden = self.hidden
-    mytable.auto_hidden = self.auto_hidden
-    mytable.connectedToBorder = self.connectedToBorder
-    mytable.connectedContainers = self.connectedContainers
-    mytable.windowname = self.windowname
-    if not(io.exists(dir)) then lfs.mkdir(dir) end
-    table.save(saveDir, mainTable)
-    return true
-end
-
---- restores/loads the before saved settings 
--- @param slot defines a load slot for example a number (1,2,3..) or a string "backup" [optional]
--- @param dir defines load directory [optional]
--- @see Dockable.Container:save
-function Dockable.Container:load(slot, dir)
-    local mytable = {}
-    mytable.slot = {}
-    assert(slot == nil or type(slot) == "string" or type(slot) == "number", "Dockable.Container.load: bad argument #1 type (slot as string or number expected, got "..type(slot).."!)")
-    assert(dir == nil or type(dir) == "string" , "Dockable.Container.load: bad argument #2 type (directory as string expected, got "..type(dir).."!)")
-    dir = dir or self.defaultDir
-    local loadDir = string.format("%s%s.lua", dir, self.name)
-    if not (io.exists(loadDir)) then
-        return string.format("Dockable.Container.load: Couldn't load settings from %s", loadDir)
-    end
-
-    local ok = pcall(table.load, loadDir, mytable)
-    if not ok then
-        self:deleteSaveFile()
-        debugc(string.format("Dockable.Container.load: Save file %s got corrupted. It was deleted so everything else can load properly.", loadDir))
-        return false
-    end
-
-    -- if slot settings not found load default settings
-    if slot then
-        mytable = mytable.slot[slot] or mytable
-    end
-
-    mytable.windowname = mytable.windowname or "main"
-    
-    -- send Adjustable Container to a UserWindow/ScrollBox if saved there
-    if mytable.windowname ~= self.windowname then
-        if mytable.windowname == "main" then
-            self:changeContainer(Geyser)
-        else
-            self:changeContainer(Geyser.parentWindows[mytable.windowname])
-        end
-    end
-
-    self.lockStyle = mytable.lockStyle or self.lockStyle
-    self.padding = mytable.padding or self.padding
-    self.attachedMargin = mytable.attachedMargin or self.attachedMargin
-
-
-    if mytable.x then
-        self:move(mytable.x, mytable.y)
-        self:resize(mytable.width, mytable.height)
-        self.minimized = mytable.minimized
-
-        if mytable.locked == true then self:lockContainer()  else self:unlockContainer() end
-
-        if self.minimized == true then self.Inside:hide() self:resize(nil, self.buttonsize + 10) else self.Inside:show() end
-        self.origh = mytable.origh
-    end
-
-    if mytable.auto_hidden or mytable.hidden then
-        self:hide()
-        if not mytable.hidden then
-            self.hidden = false
-            self.auto_hidden = true
-        end
-    else
-        self:show()
-    end
-
-    self:detach()
-    if mytable.attached then
-        self:attachToBorder(mytable.attached) 
-    end
-
-    self:adjustBorder()
-
-    self.connectedContainers = mytable.connectedContainers or self.connectedContainers
-    self.connectedToBorder = mytable.connectedToBorder or self.connectedToBorder
-    if self.connectedToBorder then
-        for k in pairs(self.connectedToBorder) do
-            self:connectToBorder(k)
-        end
-    end
-    self:adjustConnectedContainers()
-    return true
-end
 
 --- overridden reposition function to raise an "AdjustableContainerReposition" event
 --- Event: "AdjustableContainerReposition" passed values (name, width, height, x, y, isMouseAction)
@@ -996,41 +859,6 @@ function Dockable.Container:reposition()
     )
 end
 
---- deletes the file where your saved settings are stored
--- @param dir defines directory where the saved file is in [optional]
--- @see Dockable.Container:save
-function Dockable.Container:deleteSaveFile(dir)
-    assert(dir == nil or type(dir) == "string" , "Dockable.Container.deleteSaveFile: bad argument #1 type (directory as string expected, got "..type(dir).."!)")
-    dir = dir or self.defaultDir
-    local deleteDir = string.format("%s%s.lua", dir, self.name)
-    if io.exists(deleteDir) then
-        os.remove(deleteDir)
-    else
-        return "Dockable.Container.deleteSaveFile: Couldn't find file to delete at " .. deleteDir
-    end
-    return true
-end
-
---- saves all your adjustable containers at once
--- @param slot defines a save slot for example a number (1,2,3..) or a string "backup" [optional]
--- @param dir defines save directory [optional]
--- @see Dockable.Container:save
-function Dockable.Container:saveAll(slot, dir)
-    for  k,v in pairs(Dockable.Container.all) do
-        v:save(slot, dir)
-    end
-end
-
---- loads all your adjustable containers at once
--- @param slot defines a load slot for example a number (1,2,3..) or a string "backup" [optional]
--- @param dir defines load directory [optional]
--- @see Dockable.Container:load
-function Dockable.Container:loadAll(slot, dir)
-    for  k,v in pairs(Dockable.Container.all) do
-        v:load(slot, dir)
-    end
-end
-
 --- shows all your adjustable containers
 -- @see Dockable.Container:doAll
 function Dockable.Container:showAll()
@@ -1047,35 +875,7 @@ function Dockable.Container:doAll(myfunc)
     end
 end
 
---- changes the values of your container to absolute values
--- (standard settings are set values to percentages)
--- @param size_as_absolute bool true to have the size as absolute values
--- @param position_as_absolute bool true to have the position as absolute values
-function Dockable.Container:setAbsolute(size_as_absolute, position_as_absolute)
-    if position_as_absolute then
-        self.x, self.y = self.get_x(), self.get_y()
-    end
-    if size_as_absolute then
-        self.width, self.height = self.get_width(), self.get_height()
-    end
-    self:set_constraints(self)
-end
 
---- changes the values of your container to be percentage values
--- only needed if values where set to absolute before
--- @param size_as_percent bool true to have the size as percentage values
--- @param position_as_percent bool true to have the position as percentage values
-function Dockable.Container:setPercent (size_as_percent, position_as_percent)
-    local x, y, w, h = self:get_x(), self:get_y(), self:get_width(), self:get_height()
-    local winw, winh = getMainWindowSize()
-    if (self.container) and (self.container ~= Geyser) then
-        x,y = x-self.container.get_x(),y-self.container.get_y()
-        winw, winh = self.container.get_width(), self.container.get_height()
-    end
-    x, y, w, h = make_percent(x/winw), make_percent(y/winh), make_percent(w/winw), make_percent(h/winh)
-    if size_as_percent then self:resize(w,h) end
-    if position_as_percent then self:move(x,y) end
-end
 -- Save a reference to our parent constructor
 Dockable.Container.parent = Geyser.Container
 -- Create table to put every Dockable.Container in it
@@ -1087,38 +887,21 @@ Dockable.Container.Attached = Dockable.Container.Attached or {}
 function Dockable.Container:globalLockStyles()
     self.lockStyles = self.lockStyles or {}
     self:newLockStyle("standard", function (s)
+        s.titleLabel:show()
+        s.Inside:move(s.padding, s.titleLabel:get_y() - s:get_y() + s.titleLabel:get_height())
         s.Inside:resize("-"..s.padding,"-"..s.padding)
+        s.adjLabel:setStyleSheet(s.adjLabelstyle)
+        s.minimizeLabel:show()
+    end)
+
+    self:newLockStyle("untitled",  function (s)
+        s.titleLabel:hide()
         s.Inside:move(s.padding, s.padding)
-        s.adjLabel:setStyleSheet(s.adjLabelstyle)
-    end)
-
-    self:newLockStyle("border",  function (s)
         s.Inside:resize("-"..s.padding,"-"..s.padding)
-        s.Inside:move(s.padding, s.padding)
         s.adjLabel:setStyleSheet(s.adjLabelstyle)
-        s.adjLabel:echo("")
+        s.minimizeLabel:hide()
     end)
 
-    self:newLockStyle("hidden",  function (s)
-        s.Inside:resize("100%",-1)
-        s.Inside:move(0, s.padding)
-        s.adjLabel:setStyleSheet(string.gsub(s.adjLabelstyle, "(border.-)%d(.-;)","%10%2"))
-        s.adjLabel:echo("")
-    end)
-
-    self:newLockStyle("full", function (s)
-        s.Inside:resize("100%","100%")
-        s.Inside:move(0,0)
-        s.adjLabel:setStyleSheet(string.gsub(s.adjLabelstyle, "(border.-)%d(.-;)","%10%2"))
-        s.adjLabel:echo("")
-    end)
-
-    self:newLockStyle("light", function (s)
-        s:setTitle()
-        s.Inside:resize("-"..s.padding,"-"..s.padding)
-        s.Inside:move(s.padding, s.padding*2)
-        s.adjLabel:setStyleSheet(s.adjLabelstyle)
-    end)
 end
 
 --- creates a new Lockstyle
@@ -1131,7 +914,7 @@ function Dockable.Container:newLockStyle(name, func)
     self.lockStyles[#self.lockStyles + 1] = {name, func}
     self.lockStyles[name] = self.lockStyles[#self.lockStyles]
     if self.lockStylesLabel then
-        createMenus(self, "lockStylesLabel", name, "Dockable.Container.lockContainer")
+        createMenus(self, "lockStylesLabel", name, function (lockNr, lockStyle) self:lockContainer(lockNr, lockStyle) end)
     end
 end
 
@@ -1165,7 +948,6 @@ end
 --- constructor for the Adjustable Container
 ---@param cons besides standard Geyser.Container parameters there are also:
 ---@param container
---@param[opt="getMudletHomeDir().."/AdjustableContainer/"" ] cons.defaultDir default dir where settings are loaded/saved to/from
 --@param[opt="102" ] cons.ParentMenuWidth  menu width of the main right click menu
 --@param[opt="82"] cons.ChildMenuWidth  menu width of the children in the right click menu (for attached, lockstyles and custom items)
 --@param[opt="22"] cons.MenuHeight  height of a single menu item
@@ -1182,18 +964,13 @@ end
 --@param[opt=false] cons.attached  attached to a border at creation? possible borders are ("top", "bottom", "left", "right")
 --@param cons.lockLabel.txt  text of the "lock" menu item
 --@param cons.minLabel.txt  text of the "min/restore" menu item
---@param cons.saveLabel.txt  text of the "save" menu item
---@param cons.loadLabel.txt  text of the "load" menu item
---@param cons.attLabel.txt  text of the "attached menu" item
 --@param cons.lockStylesLabel.txt  text of the "lockstyle menu" item
 --@param cons.customItemsLabel.txt  text of the "custom menu" item
---@param[opt="green"] cons.titleTxtColor  color of the title text
+--@param[opt="white"] cons.titleTxtColor  color of the title text
 --@param cons.titleText  title text
 --@param[opt="standard"] cons.lockStyle  choose lockstyle at creation. possible integrated lockstyle are: "standard", "border", "light" and "full"
 --@param[opt=false] cons.noLimit  there is a minimum size limit if this constraint is set to false.
 --@param[opt=true] cons.raiseOnClick  raise your container if you click on it with your left mouse button
---@param[opt=true] cons.autoSave  saves your container settings on exit (sysExitEvent). If set to false it won't autoSave
---@param[opt=true] cons.autoLoad  loads the container settings (if there are some to load) at creation of the container. If set to false it won't load the settings at creation
 
 function Dockable.Container:new(cons,container)
     Dockable.Container.Locale = Dockable.Container.Locale or loadTranslations("AdjustableContainer")
@@ -1209,24 +986,23 @@ function Dockable.Container:new(cons,container)
     me.MenuFontSize = me.MenuFontSize or "8"
     me.buttonsize = me.buttonsize or "15"
     me.buttonFontSize = me.buttonFontSize or "8"
-    me.padding = me.padding or 10
+    me.padding = me.padding or 1
     me.attachedMargin = me.attachedMargin or 5
+    me.permanentBorders = me.permanentBorders or {}
+    me.customMenus = me.customMenus or {}
 
     -- DOCKABLE OPTS
-    me.minimizeDirection = me.minimizeDirection or "top"   
+    me.minimizeDirection = me.minimizeDirection or "top"
     me.allowClose = me.allowClose or false
-    
 
     me.adjLabelstyle = me.adjLabelstyle or [[
-    background-color: rgba(0,0,0,100%);
-    border-top: 1em solid #282828;
-    padding-top: -1em;]]
-    me.unlockedSideStyle = me.unlockedSideStyle or "1px solid grey"
-    me.unlockedSidePadding = me.unlockedSidePadding or "1px"
+    background-color: rgba(0,0,0,0%);]]
+    me.unlockedSideStyle = me.unlockedSideStyle or me.padding.."px solid #282828"
     me.menuStyleMode = "light"
+    -- TODO: style these using themes
     me.buttonstyle= me.buttonstyle or [[
-    QLabel{ border-radius: 7px; background-color: rgba(255,30,30,100%);}
-    QLabel::hover{ background-color: rgba(255,0,0,50%);}
+    QLabel{ border-radius: 2px; background-color: hsv(0,0,12);}
+    QLabel::hover{ background-color: hsv(0,0,14);}
     ]]
 
     me:createContainers()
@@ -1238,31 +1014,34 @@ function Dockable.Container:new(cons,container)
     me.minimized =  me.minimized or false
     me.locked =  me.locked or false
 
-    me.adjLabelstyle = me.adjLabelstyle..[[ qproperty-alignment: 'AlignTop';]]
     me.lockLabel.txt = me.lockLabel.txt or [[<font size="5" face="Noto Emoji">🔒</font>]] .. self.Locale.lock.message
     me.minLabel.txt = me.minLabel.txt or [[<font size="5" face="Noto Emoji">🗕</font>]] ..self.Locale.min_restore.message
-    me.saveLabel.txt = me.saveLabel.txt or [[<font size="5" face="Noto Emoji">💾</font>]].. self.Locale.save.message
-    me.loadLabel.txt = me.loadLabel.txt or [[<font size="5" face="Noto Emoji">📁</font>]].. self.Locale.load.message
-    me.attLabel.txt  = me.attLabel.txt or [[<font size="5" face="Noto Emoji">⚓</font>]]..self.Locale.attach.message
     me.lockStylesLabel.txt = me.lockStylesLabel.txt or [[<font size="5" face="Noto Emoji">🖌</font>]]..self.Locale.lockstyle.message
     me.customItemsLabel.txt = me.customItemsLabel.txt or [[<font size="5" face="Noto Emoji">🖇</font>]]..self.Locale.custom.message
-
+    -- TODO: style title label using themes
     me.adjLabel:setStyleSheet(me.adjLabelstyle)
     if me.allowClose then me.exitLabel:setStyleSheet(me.buttonstyle) end
     me.minimizeLabel:setStyleSheet(me.buttonstyle)
     me:echoRightClickMenu()
-    
+
     me.adjLabel:setClickCallback(function (e) me:onClick(me.adjLabel, e) end)
     me.adjLabel:setReleaseCallback(function (e) me:onRelease(me.adjLabel, e) end)
     me.adjLabel:setMoveCallback(function (e) me:onMove(me.adjLabel, e) end)
     me.minLabel:setClickCallback(function (e) me:onClickMin() end)
-    me.saveLabel:setClickCallback(function (e) me:onClickSave() end)
     me.lockLabel:setClickCallback(function (e) me:onClickL() end)
-    me.loadLabel:setClickCallback(function (e) me:onClickLoad() end)
     me.origh = me.height
-    if me.allowClose then me.exitLabel:setClickCallback(function (e) me:hideObj() end) end
+
+    if me.allowClose then
+        if type(me.closeCallback) == "function" then
+            me.exitLabel:setClickCallback(function (e)
+                me:closeCallback(e)
+            end)
+        else
+            me.exitLabel:setClickCallback(function (e) me:hideObj() end)
+        end
+    end
     me.minimizeLabel:setClickCallback(function (e) me:onClickMin() end)
-    me.attLabel:setOnEnter(function (e) me:onEnterAtt() end)
+
     me.goInside = true
     me.titleTxtColor = me.titleTxtColor or "white"
     me.titleText = me.titleText or me.name.." - Dockable Container"
@@ -1313,17 +1092,6 @@ function Dockable.Container:new(cons,container)
         me:show()
     end
 
-    -- Loads on creation (by Name) if autoLoad is not false
-    if not(me.autoLoad == false) then
-        me.autoLoad = true
-        me:load()
-    end
-
-    -- Saves on Exit if autoSave is not false
-    if not(me.autoSave == false) then
-        me.autoSave = true
-        me:enableAutoSave()
-    end
     
     me.organized = me.organized or Dockable.Unorganized
 
@@ -1334,7 +1102,6 @@ function Dockable.Container:new(cons,container)
     -- TODO: Make this configurable
     -- Keeping it clear
     me.lockedSides = {}
-    me:applyBorderStyles()
     if me.container.direction == Dockable.Horizontal then
         me.lockedSides[#me.lockedSides+1] = "top"
         me.lockedSides[#me.lockedSides+1] = "bottom"
@@ -1343,6 +1110,8 @@ function Dockable.Container:new(cons,container)
         me.lockedSides[#me.lockedSides+1] = "right"
         me.lockedSides[#me.lockedSides+1] = "left"
     end
+    
+    me:applyBorderStyles()
 
     Dockable.Container.all[me.name] = me
     me:adjustBorder()
@@ -1365,22 +1134,32 @@ function Dockable.Container:oldnew(cons, container)
 end
 
 function Dockable.Container:applyBorderStyles()
-    for _, side in pairs({"bottom", "right", "left"}) do
+    for _, side in pairs({"top", "bottom", "right", "left"}) do
         -- Remove the border if we need to
-        if table.index_of(self.lockedSides, side) ~= nil then
+        if table.index_of(self.lockedSides, side) ~= nil and table.index_of(self.permanentBorders, side) == nil then
             local n, count = string.gsub(self.adjLabelstyle, "(border%-"..side..":)%d(.-;)","%10%2")
-            if count ~= 0 then self.adjLabel:setStyleSheet(n) end
+            if count ~= 0 then self.adjLabelstyle = n end
         else
             local n, count = string.gsub(self.adjLabelstyle, "(border%-"..side..":).-(;)","%1"..self.unlockedSideStyle.."%2")
             if count == 0 then n = n.."border-"..side..":"..self.unlockedSideStyle..";" end
-            self.adjLabel:setStyleSheet(n)
+            self.adjLabelstyle = n
         end
     end
+    self.adjLabel:setStyleSheet(self.adjLabelstyle)
 end
 
 function Dockable.Container:lockAllSides()
     self.lockedSides = { "top", "bottom", "right", "left"}
     self:applyBorderStyles()
+end
+
+function Dockable.Container:getRequiredPadding()
+    local p = { top = self.padding, right = self.padding, bottom = self.padding, left = self.padding }
+    for _, v in pairs(self.lockedSides) do
+        p[v] = 0
+    end
+
+    return p
 end
 
 function Dockable.Container:unlockSide(side)
