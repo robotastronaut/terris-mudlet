@@ -1,3 +1,5 @@
+local resourcesDir = (...):match("(.-)[^%.]+$")
+local Dockable = require(resourcesDir .. "Dockable")
 local Stats = {}
 
 function Stats:new(layout, parent)
@@ -21,21 +23,13 @@ function Stats:new(layout, parent)
 end
 
 function Stats:render()
-  self.container = Geyser.Container:new({
+  self.container = Dockable.Container:new({
     name = "terris.widgets.stats",
     h_policy = Geyser.Fixed,
     height = "100%",
-    width = self.layout.width.."%",  
+    width = self.layout.width.."%",
+    titleText = "Stats"
   }, self.parent.container)
-
-  self.components.statsLabel = Geyser.Label:new({
-    name = "terris.widgets.stats.label",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "1c",
-    message = [[<center>Stats</center>]],
-  }, self.container)
 
   self.components.hpbar = Geyser.Gauge:new({
     name="terris.widgets.stats.hpbar",

@@ -1,3 +1,5 @@
+local resourcesDir = (...):match("(.-)[^%.]+$")
+local Dockable = require(resourcesDir .. "Dockable")
 local Buffs = {}
 
 function Buffs:new(layout, parent)
@@ -25,25 +27,17 @@ function Buffs:new(layout, parent)
 end
 
 function Buffs:render()
-  self.container = Geyser.Container:new({
+  self.container = Dockable.Container:new({
     name = "terris.widgets.buffs",
     h_policy = Geyser.Fixed,
     width = self.layout.width.."%",
     height = "100%",
+    titleText = "Buffs"
   }, self.parent.container)
-  
-  self.components.label = Geyser.Label:new({
-    name = "terris.widgets.buffs.label",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "1c",
-    message = [[<center>Buffs</center>]],
-  }, self.container)
   
   self.components.console = Geyser.MiniConsole:new({
     x = 0,
-    y = "1c",
+    y = "1.5c",
     name = "terris.widgets.buffs.console",
     color = "#00000000",
     width = "100%",

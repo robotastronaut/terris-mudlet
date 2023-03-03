@@ -1,4 +1,6 @@
 local Details = {}
+local resourcesDir = (...):match("(.-)[^%.]+$")
+local Dockable = require(resourcesDir .. "Dockable")
 function Details:new(layout, parent)
   local me = {
     layout = {
@@ -25,27 +27,23 @@ function Details:new(layout, parent)
 end
 
 function Details:render()
-  self.container = Geyser.Container:new({
+  self.container = Dockable.Container:new({
     name = "terris.widgets.details",
     h_policy = Geyser.Fixed,
     height = "100%",
     width = self.layout.width.."%",
+    titleText = "Details"
   }, self.parent.container)
-
-  self.components.detailsLabel = Geyser.Label:new({
-    name = "terris.widgets.details.label",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "1c",
-    message = [[<center>Details</center>]],
-  }, self.container)
 
   self:gold()
   self:hands()
+  -- display("ADD DETAILS PARENT CONTAINER")
+  -- display(self.parent)
 end
 
 function Details:gold()
+  -- display("ADD DETAILS")
+  -- display(self.container)
   self.components.goldLabel = Geyser.Label:new({
     name = "terris.widgets.details.gold.label",
     x = 0,
@@ -59,7 +57,7 @@ function Details:gold()
     name = "terris.widgets.details.gold.value",
     x = self.layout.tagWidth.."%",
     y = "1.5c",
-    width = 100-self.layout.tagWidth.."%",
+    width = 95-self.layout.tagWidth.."%",
     height = "1c",
   }, self.container)
 
@@ -95,7 +93,7 @@ function Details:hands()
     name = "terris.widgets.details.hands.rhValueLabel",
     x = self.layout.tagWidth.."%",
     y = "3c",
-    width = 100-self.layout.tagWidth.."%",
+    width = 95-self.layout.tagWidth.."%",
     height = "1c",
   }, self.container)
 
@@ -114,7 +112,7 @@ function Details:hands()
     name = "terris.widgets.details.hands.lhValueLabel",
     x = self.layout.tagWidth.."%",
     y = "4.5c",
-    width = 100-self.layout.tagWidth.."%",
+    width = 95-self.layout.tagWidth.."%",
     height = "1c",
   }, self.container)
 

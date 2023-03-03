@@ -77,7 +77,7 @@ function Channel:render()
   self.components.console = Geyser.MiniConsole:new({
     name = "terris.comms.channels."..self.name..".components.console",
     x = 0,
-    y = "1c",
+    y = 0,
     nestable = true,
     color = "#00000000",
     width = "100%",
@@ -85,64 +85,16 @@ function Channel:render()
     autoWrap = true,
   }, self.container)
   
-  self.components.label = Geyser.Label:new({
-    name = "terris.comms.channels."..self.name..".components.label",
-    x = 0,
-    y = 0,
-    nestable = true,
-    width = "100%",
-    height = "1c",
-    message = [[<center>]]..self.label..[[</center>]],
-  }, self.container)
+  -- self.components.label = Geyser.Label:new({
+  --   name = "terris.comms.channels."..self.name..".components.label",
+  --   x = 0,
+  --   y = 0,
+  --   nestable = true,
+  --   width = "100%",
+  --   height = "1c",
+  --   message = [[<center>]]..self.label..[[</center>]],
+  -- }, self.container)
 
-  local controlName = "terris.comms.controls." .. self.name
-  
-  self.components.moveLeft = Geyser.Label:new({
-    name = controlName..".moveLeft",
-    y = 0,
-    x = "-5c",
-    width = "1c",
-    height = "1c",
-    message = [[<center>◄</center>]],
-  }, self.container)
-
-
-  self.components.moveLeft:setCursor("PointingHand")
-
-  self.components.moveLeft:setClickCallback(function()
-    self.parent:shiftLeft(self.container.name)
-  end)
-
-
-  self.components.moveRight = Geyser.Label:new({
-    name = controlName .. ".moveRight",
-    y = 0,
-    x = "-3c",
-    message = "<center>►</center>",
-    width = "1c",
-    height = "1c",
-  }, self.container)
-
-  self.components.moveRight:setClickCallback(function()
-    self.parent:shiftRight(self.container.name)
-  end)
-  self.components.moveRight:setCursor("PointingHand")
-
-
-  self.components.toggle = Geyser.Label:new({
-    name = controlName .. ".toggle",
-    y = 0,
-    x = "-1c",
-    message = "<center>x</center>",
-    width = "1c",
-    height = "1c",
-  }, self.container)
-
-  self.components.toggle:setClickCallback(function()
-    self:disable()
-  end)
-
-  self.components.toggle:setCursor("PointingHand")
 
   if not self.enabled then self:disable() end
 

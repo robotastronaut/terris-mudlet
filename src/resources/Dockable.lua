@@ -1,7 +1,10 @@
 local Dockable = Dockable or {}
+Dockable.Unorganized = 0
+Dockable.Horizontal = 1
+Dockable.Vertical = 2
 
 local resourcesDir = (...):match("(.-)[^%.]+$")
-Dockable.Insider = require(resourcesDir .. "DockableInsider")
+Dockable.Insider = Dockable.Insider or require(resourcesDir .. "DockableInsider")
 
 --------------------------------------
 --                                  --
@@ -68,9 +71,9 @@ end
 -- @param color title text color
 -- @param format title format
 function Dockable.Container:setTitle(text, color, format)
-    self.titleFormat = format or self.titleFormat or "l"
+    self.titleFormat = format or self.titleFormat or "c"
     self.titleText = text or self.titleText or string.format("%s - Dockable Container")
-    self.titleTxtColor = color or self.titleTxtColor or "green"
+    self.titleTxtColor = color or self.titleTxtColor or "white"
     if self.locked and self.connectedContainers then
         return
     end
@@ -516,24 +519,15 @@ function Dockable.Container:createContainers()
         width = "100%",
         name = self.name.."adjLabel"
     },self)
-    if self.organized == "horizontal" or self.organized == "vertical" then
-      self.Inside = Dockable.Insider:new({
-          x = self.padding,
-          y = self.padding*2,
-          height = "-"..self.padding,
-          width = "-"..self.padding,
-          name = self.name.."InsideContainer",
-          direction = self.organized,
-      },self)
-    else
-      self.Inside = Geyser.Container:new({
-          x = self.padding,
-          y = self.padding*2,
-          height = "-"..self.padding,
-          width = "-"..self.padding,
-          name = self.name.."InsideContainer"
-      },self)
-    end
+
+    self.Inside = Dockable.Insider:new({
+        x = self.padding,
+        y = self.padding*2,
+        height = "-"..self.padding,
+        width = "-"..self.padding,
+        name = self.name.."InsideContainer",
+        direction = self.organized,
+    },self)
     
 end
 
@@ -824,6 +818,8 @@ end
 -- @param cons derives from the original Geyser.Container:add function
 function Dockable.Container:add(window, cons)
     if self.goInside then
+        display("ADD TO INSIDE")
+        display(window.name)
         if self.useAdd2 == false then
             self.Inside:add(window, cons)
         else
@@ -831,6 +827,8 @@ function Dockable.Container:add(window, cons)
             self.Inside:add2(window, cons, true)
         end
     else
+        display("ADD TO SELF")
+        display(window.name)
         if self.useAdd2 == false then
            Geyser.add(self, window, cons)
         else
@@ -1088,16 +1086,22 @@ Dockable.Container.Attached = Dockable.Container.Attached or {}
 function Dockable.Container:globalLockStyles()
     self.lockStyles = self.lockStyles or {}
     self:newLockStyle("standard", function (s)
-        s.Inside:resize("100%",-1)
-        s.Inside:move(0, s.padding)
-        s.adjLabel:setStyleSheet(string.gsub(s.adjLabelstyle, "(border.-)%d(.-;)","%10%2"))
-        s.adjLabel:echo("")
+        s.Inside:resize("-"..s.padding,"-"..s.padding)
+        s.Inside:move(s.padding, s.padding)
+        s.adjLabel:setStyleSheet(s.adjLabelstyle)
     end)
 
     self:newLockStyle("border",  function (s)
         s.Inside:resize("-"..s.padding,"-"..s.padding)
         s.Inside:move(s.padding, s.padding)
         s.adjLabel:setStyleSheet(s.adjLabelstyle)
+        s.adjLabel:echo("")
+    end)
+
+    self:newLockStyle("hidden",  function (s)
+        s.Inside:resize("100%",-1)
+        s.Inside:move(0, s.padding)
+        s.adjLabel:setStyleSheet(string.gsub(s.adjLabelstyle, "(border.-)%d(.-;)","%10%2"))
         s.adjLabel:echo("")
     end)
 
@@ -1214,8 +1218,10 @@ function Dockable.Container:new(cons,container)
 
     me.adjLabelstyle = me.adjLabelstyle or [[
     background-color: rgba(0,0,0,100%);
-    border: 4px double green;
-    border-radius: 4px;]]
+    border-top: 1em solid #282828;
+    padding-top: -1em;]]
+    me.unlockedSideStyle = me.unlockedSideStyle or "1px solid grey"
+    me.unlockedSidePadding = me.unlockedSidePadding or "1px"
     me.menuStyleMode = "light"
     me.buttonstyle= me.buttonstyle or [[
     QLabel{ border-radius: 7px; background-color: rgba(255,30,30,100%);}
@@ -1231,7 +1237,7 @@ function Dockable.Container:new(cons,container)
     me.minimized =  me.minimized or false
     me.locked =  me.locked or false
 
-    me.adjLabelstyle = me.adjLabelstyle..[[ qproperty-alignment: 'AlignLeft | AlignTop';]]
+    me.adjLabelstyle = me.adjLabelstyle..[[ qproperty-alignment: 'AlignTop';]]
     me.lockLabel.txt = me.lockLabel.txt or [[<font size="5" face="Noto Emoji">🔒</font>]] .. self.Locale.lock.message
     me.minLabel.txt = me.minLabel.txt or [[<font size="5" face="Noto Emoji">🗕</font>]] ..self.Locale.min_restore.message
     me.saveLabel.txt = me.saveLabel.txt or [[<font size="5" face="Noto Emoji">💾</font>]].. self.Locale.save.message
@@ -1257,7 +1263,7 @@ function Dockable.Container:new(cons,container)
     me.minimizeLabel:setClickCallback(function (e) me:onClickMin() end)
     me.attLabel:setOnEnter(function (e) me:onEnterAtt() end)
     me.goInside = true
-    me.titleTxtColor = me.titleTxtColor or "green"
+    me.titleTxtColor = me.titleTxtColor or "white"
     me.titleText = me.titleText or me.name.." - Dockable Container"
     me:setTitle()
     me.lockStyle = me.lockStyle or "standard"
@@ -1318,17 +1324,21 @@ function Dockable.Container:new(cons,container)
         me:enableAutoSave()
     end
     
-    if me.organized ~= nil then me:addOrganizerMenu() end
+    me.organized = me.organized or Dockable.Unorganized
+
+    if me.organized ~= Dockable.Unorganized then me:addOrganizerMenu() end
+    
     if type(me.container.organize) == "function" then me.raiseOnClick = false end
 
     -- TODO: Make this configurable
     -- Keeping it clear
     me.lockedSides = {}
-    if me.container.direction == "horizontal" then
+    me:applyBorderStyles()
+    if me.container.direction == Dockable.Horizontal then
         me.lockedSides[#me.lockedSides+1] = "top"
         me.lockedSides[#me.lockedSides+1] = "bottom"
     end
-    if me.container.direction == "vertical" then
+    if me.container.direction == Dockable.Vertical then
         me.lockedSides[#me.lockedSides+1] = "right"
         me.lockedSides[#me.lockedSides+1] = "left"
     end
@@ -1353,13 +1363,29 @@ function Dockable.Container:oldnew(cons, container)
     return me
 end
 
+function Dockable.Container:applyBorderStyles()
+    for _, side in pairs({"bottom", "right", "left"}) do
+        -- Remove the border if we need to
+        if table.index_of(self.lockedSides, side) ~= nil then
+            local n, count = string.gsub(self.adjLabelstyle, "(border%-"..side..":)%d(.-;)","%10%2")
+            if count ~= 0 then self.adjLabel:setStyleSheet(n) end
+        else
+            local n, count = string.gsub(self.adjLabelstyle, "(border%-"..side..":).-(;)","%1"..self.unlockedSideStyle.."%2")
+            if count == 0 then n = n.."border-"..side..":"..self.unlockedSideStyle..";" end
+            self.adjLabel:setStyleSheet(n)
+        end
+    end
+end
+
 function Dockable.Container:lockAllSides()
     self.lockedSides = { "top", "bottom", "right", "left"}
+    self:applyBorderStyles()
 end
 
 function Dockable.Container:unlockSide(side)
-    index = table.index_of(self.lockedSides, side) or 0
+    local index = table.index_of(self.lockedSides, side) or 0
     table.remove(self.lockedSides, index)
+    self:applyBorderStyles()
 end
 
 function Dockable.Container:unlockOnlySide(side)
@@ -1369,7 +1395,7 @@ end
 
 function Dockable.Container:organize()
   if not self.goInside then return false end
-  if self.organized == "vertical"  or self.organized == "horizontal" then self.Inside:organize() end
+  if self.organized == Dockable.Vertical  or self.organized == Dockable.Horizontal then self.Inside:organize() end
 end
 
 function Dockable.Container:addOrganizerMenu()

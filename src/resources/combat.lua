@@ -1,3 +1,5 @@
+local resourcesDir = (...):match("(.-)[^%.]+$")
+local Dockable = require(resourcesDir .. "Dockable")
 local Combat = {}
 
 function Combat:new(layout, parent)
@@ -25,22 +27,14 @@ function Combat:new(layout, parent)
 end
 
 function Combat:render()
-  self.container = Geyser.Container:new({
+  self.container = Dockable.Container:new({
     name = "terris.widgets.combat",
     h_policy = Geyser.Fixed,
     width = self.layout.width.."%",
     height = "100%",
+    titleText = "Combat"
   }, self.parent.container)
-  
-  self.components.label = Geyser.Label:new({
-    name = "terris.widgets.combat.label",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "1c",
-    message = [[<center>Combat</center>]],
-  }, self.container)
-  
+
   self.components.balanceLabel = Geyser.Label:new({
     name = "terris.widgets.combat.balance.label",
     x = 0,

@@ -2,6 +2,7 @@ local Comms = {}
 
 local resourcesDir = (...):match("(.-)[^%.]+$")
 local Channel = require(resourcesDir .. "channel")
+local Dockable = require(resourcesDir .. "Dockable")
 
 function Comms:new(channels, events, parent)
   if channels and type(channels) ~= "table" then
@@ -58,52 +59,23 @@ function Comms:new(channels, events, parent)
   return me
 end
 
-function Comms:shiftLeft(chan)
-  local prev
-  
-  for i, k in ipairs(self.container.windows) do
-  
-    if k == chan then
-      if i == 1 then return end
-      self.container.windows[i - 1] = chan
-  
-      self.container.windows[i] = prev
-      break
-    end
-    prev = k
-  end
-  self.container:organize()
-end
-
-
-function Comms:shiftRight(chan)
-  local prev
-
-  for i=#self.container.windows,1,-1 do
-
-    local cur = self.container.windows[i]
-
-    if cur == chan then
-      if i == #self.container.windows then return end
-      self.container.windows[i + 1] = chan
-      self.container.windows[i] = prev
-      break
-    end
-    prev = cur
-  end
-  self.container:organize()
-end
 
 -- TODO: Stateful enable/disable of channels
 function Comms:render()
   debugc("terris.wizard.comms.render()")
-  self.container = Geyser.HBox:new({
+
+  self.container = Dockable.Container:new({
     name = "terris.comms.container",
     x = 0,
     y = 0,
     width = "100%",
-    height = "100%",
-  }, self.parent.containers.top)
+    height = 200,
+    moveDisabled = true,
+    ignoreInvalidAttach = true,
+    organized = Dockable.Horizontal,
+    titleText = "Channels"
+  })
+  self.container:attachToBorder("top")
 
   for i, name in ipairs(self.positions) do
     if self.channels[name] ~= nil then
@@ -119,15 +91,6 @@ function Comms:render()
   --   end
   -- end
 
-end
-
-function Comms:controls()
-  self.components.controlMenu = Geyser.Label:new(
-    { name = "terris.comms.controlmenu", x = 0, y = 0, height = "1c", width = "100%", nestable = true,
-      color = "#00000000" }, self.parent.containers.top)
-  self.components.controlMenu:setStyleSheet(
-    [[background-color: #00000000;  border-width: 0px;  border-style: solid;  border-color: white;]])
-  self.components.controlMenu:setCursor("PointingHand")
 end
 
 function Comms:handleCommsEvent(msg, config)

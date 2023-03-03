@@ -5,6 +5,7 @@ local Comms = require(resourcesDir .. "comms")
 local Footer = require(resourcesDir .. "footer")
 local Core = require(resourcesDir .. "core")
 local Session = require(resourcesDir .. "session")
+local Dockable = require(resourcesDir .. "Dockable")
 
 function Wizard.expClick()
   send("score")
@@ -56,7 +57,7 @@ function Wizard:new(layout, terrisConfig)
   setmetatable(me, self)
   self.__index = self
 
-  me.children.comms = Comms:new(me.terris.Comms.Channels, me.terris.Comms.Events, me)
+  me.containers.top = Comms:new(me.terris.Comms.Channels, me.terris.Comms.Events, me)
   me.sessions = Session:new()
 
   return me
@@ -64,44 +65,30 @@ end
 
 function Wizard:frame()
   debugc("terris.wizard.frame()")
-  setBorderBottom(self.layout.bottomBorder)
   setBorderTop(self.layout.topBorder)
-  setBorderRight(self.layout.rightBorder)
 end
 
 function Wizard:right()
   debugc("terris.wizard.right()")
-  self.containers.right = Geyser.Container:new({
+  self.containers.right = Dockable.Container:new({
     name = "terris.containers.right",
     x = -self.layout.rightBorder,
     y = self.layout.topBorder,
     width = self.layout.rightBorder,
     height = self.layout.mainHeight - self.layout.topBorder - self.layout.bottomBorder,
     padding = 0,
+    organized = Dockable.Vertical
   })
 
+  self.containers.right:attachToBorder("right")
+  self.containers.right:connectToBorder("top")
+  self.containers.right:connectToBorder("bottom")
 
-  self.containers.rightVBox = Geyser.VBox:new({
-    name = "terris.containers.rightVBox",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "100%",
-  }, self.containers.right)
 end
 
 function Wizard:top()
   debugc("terris.wizard.top()")
-  self.containers.top = Geyser.Container:new({
-    name = "terris.containers.top",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = self.layout["topBorder"],
-    moveDisabled = true,
-    ignoreInvalidAttach = true
-  })
-  
+  self.containers.top:render()
 
 end
 
@@ -116,7 +103,6 @@ function Wizard:render()
   local mainWidth, mainHeight = getMainWindowSize()
   self.layout.mainHeight = mainHeight
   self.layout.mainWidth = mainWidth
-  self:frame()
   self:top()
   self:footer()
   self:right()

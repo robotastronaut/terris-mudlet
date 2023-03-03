@@ -1,5 +1,8 @@
 local Debuffs = {}
 
+local resourcesDir = (...):match("(.-)[^%.]+$")
+local Dockable = require(resourcesDir .. "Dockable")
+
 function Debuffs:new(layout, parent)
   local me = {
     layout = {
@@ -25,25 +28,17 @@ function Debuffs:new(layout, parent)
 end
 
 function Debuffs:render()
-  self.container = Geyser.Container:new({
+  self.container = Dockable.Container:new({
     name = "terris.widgets.debuffs",
     h_policy = Geyser.Fixed,
     width = self.layout.width.."%",
     height = "100%",
+    titleText = "Debuffs"
   }, self.parent.container)
-  
-  self.components.label = Geyser.Label:new({
-    name = "terris.widgets.debuffs.label",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "1c",
-    message = [[<center>Debuffs</center>]],
-  }, self.container)
-  
+
   self.components.console = Geyser.MiniConsole:new({
     x = 0,
-    y = "1c",
+    y = "1.5c",
     name = "terris.widgets.debuffs.console",
     color = "#00000000",
     width = "100%",

@@ -7,6 +7,7 @@ local Buffs = require(resourcesDir .. "buffs")
 local Debuffs = require(resourcesDir .. "debuffs")
 local Combat = require(resourcesDir .. "combat")
 local ConfigWidget = require(resourcesDir .. "configwidget")
+local Dockable = require(resourcesDir .. "Dockable")
 
 function Footer:new(layout, parent)
   local me = {
@@ -37,13 +38,18 @@ end
 
 function Footer:render()
   debugc("terris.wizard.bottom()")
-  self.container = Geyser.HBox:new({
+  self.container = Dockable.Container:new({
     name = "terris.containers.footer",
     x = 0,
-    y = -getBorderBottom(),
+    y = -self.layout.height,
     width = "100%",
     height = self.layout.height,
+    organized = Dockable.Horizontal,
+    titleText = "Console"
   })
+
+  self.container:attachToBorder("bottom")
+
   self.components.stats = Stats:new(nil, self)
   self.components.stats:render()
   

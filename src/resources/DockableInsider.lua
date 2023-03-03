@@ -2,14 +2,22 @@ local Insider = Geyser.Container:new({
   name = "DockableInsiderClass"
 })
 
+Insider.Disorganized = 0
+Insider.Horizontal = 1
+Insider.Vertical = 2
+
 local function make_percent(num)
   return string.format("%.5f%%", (num * 100))
 end
 
 function Insider:add (window, cons)
   if self.useAdd2 then
+    display("ADD2 window")
+    display(window.name)
     Geyser.add2(self, window, cons)
   else
+    display("ADD window")
+    display(window.name)
     Geyser.add(self, window, cons)
   end
   if not self.defer_updates then
@@ -136,14 +144,14 @@ function Insider:get_child_remaining_space(target)
     local width = window:get_width()
     local minh, minw = 0, 0
 
-    if self.direction == "horizontal" then
+    if self.direction == Insider.Horizontal then
       if window.minw ~= nil then minw = window.minw end
       if window.h_policy == Geyser.Fixed then
         minw = width
       end
     end
 
-    if self.direction == "vertical" then
+    if self.direction == Insider.Vertical then
       if window.minh ~= nil then minh = window.minh end
       if window.v_policy == Geyser.Fixed then
         minh = height
@@ -198,12 +206,12 @@ function Insider:should_shift_left(target)
   else
     local window_name = self.windows[ti - 1]
     local window = self.windowList[window_name]
-    if self.direction == "horizontal" then
+    if self.direction == Insider.Horizontal then
       local midpoint = window.get_x() + (window:get_width() / 2)
       if target.get_x() < midpoint then
         return true
       end
-    else
+    elseif self.direction == Insider.Vertical then
       local midpoint = window.get_y() + (window:get_height() / 2)
       if target.get_y() < midpoint then return true end
     end
@@ -224,10 +232,10 @@ function Insider:should_shift_right(target)
   else
     local window_name = self.windows[ti + 1]
     local window = self.windowList[window_name]
-    if self.direction == "horizontal" then
+    if self.direction == Insider.Horizontal then
       local midpoint = window.get_x() + (window:get_width() / 2)
       if target.get_x() > midpoint then return true end
-    else
+    elseif self.direction == Insider.Vertical then
       local midpoint = window.get_y() + (window:get_height() / 2)
       if target.get_y() > midpoint then return true end
     end
@@ -241,13 +249,13 @@ function Insider:move_dockable(window, adjustInfo, dx, dy)
   local winw, winh = self.get_width(), self.get_height()
   local tx, ty = math.max(0,x-dx), math.max(0,y-dy)
   local shifted = false
-  if self.direction == "vertical" then
+  if self.direction == Insider.Vertical then
     ty = math.min(ty, winh)
   else 
     math.min(ty, winh - h)
   end
 
-  if self.direction == "horizontal" then
+  if self.direction == Insider.Horizontal then
     math.min(tx, winw)
   else
     math.min(tx, winw - w)
@@ -281,14 +289,14 @@ function Insider:resize_dockable(window, adjustInfo, dx, dy)
 
   local max = self:get_child_remaining_space(window)
   
-  if adjustInfo.bottom and self.direction == "vertical" then
+  if adjustInfo.bottom and self.direction == Insider.Vertical then
     -- if the change is to the bottom, only adjust the height
     th = math.max(math.min(h2, max.h), window.minh)
     window.v_policy = Geyser.Fixed
     window:resize(nil, make_percent(th/winh))
   end
 
-  if adjustInfo.right and self.direction == "horizontal" then
+  if adjustInfo.right and self.direction == Insider.Horizontal then
     tw = math.max(math.min(w2, max.w), window.minw)
     window.h_policy = Geyser.Fixed
     window:resize(make_percent(tw/winw))
@@ -304,7 +312,7 @@ function Insider:new(cons, container)
   -- Initiate and set Window specific things
   cons = cons or {}
   cons.type = cons.type or "dockable.insider"
-  cons.direction = cons.direction or "horizontal"
+  cons.direction = cons.direction or Insider.Horizontal
 
   -- Call parent's constructor
   local me = self.parent:new(cons, container)
@@ -315,7 +323,7 @@ function Insider:new(cons, container)
 end
 
 function Insider:organize()
-  if self.direction == "vertical" then self:organizeV() elseif self.direction == "horizontal" then self:organizeH() end
+  if self.direction == Insider.Vertical then self:organizeV() elseif self.direction == Insider.Horizontal then self:organizeH() end
 end
 
 --- Overridden constructor to use add2

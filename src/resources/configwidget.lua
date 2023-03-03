@@ -1,3 +1,5 @@
+local resourcesDir = (...):match("(.-)[^%.]+$")
+local Dockable = require(resourcesDir .. "Dockable")
 local ConfigWidget = {}
 
 function ConfigWidget:new(layout, parent)
@@ -25,19 +27,11 @@ function ConfigWidget:new(layout, parent)
 end
 
 function ConfigWidget:render()
-  self.container = Geyser.Container:new({
+  self.container = Dockable.Container:new({
     name = "terris.widgets.config",
     height = "100%",
+    titleText = "Config"
   }, self.parent.container)
-
-  self.components.detailsLabel = Geyser.Label:new({
-    name = "terris.widgets.config.label",
-    x = 0,
-    y = 0,
-    width = "100%",
-    height = "1c",
-    message = [[<center>Config</center>]],
-  }, self.container)
 
 end
 
