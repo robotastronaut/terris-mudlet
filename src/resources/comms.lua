@@ -75,11 +75,12 @@ function Comms:render()
   })
   self.container:attachToBorder("top")
 
-  for i, name in ipairs(self.channels) do
-    if self.channels[name] ~= nil then
-      self.channels[name]:render()
+  for _, chan in pairs(self.channels) do
+    if chan.enabled then
+      chan:render()
     end
   end
+  self.container:organize()
 end
 
 function Comms:handleCommsEvent(msg, config)

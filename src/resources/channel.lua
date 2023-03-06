@@ -13,7 +13,7 @@ function Channel:new(name, label, enabled, parent)
     error("Channel:new(name, label, parent): Argument error, expected label to be of type string, got " .. type(name))
   end
   local me = {
-    container = {},
+    -- container = {},
     components = {},
   }
   debugc("CREATING CHANNEL "..name.." ("..tostring(enabled)..")")
@@ -72,7 +72,8 @@ function Channel:render()
     name = "terris.comms.channels."..self.name..".container",
     titleText = self.label,
     height = "100%",
-    closeCallback = function() self:disable() end
+    closeCallback = function() self:disable() end,
+    minimizeDirection = "right",
   }, self.parent.container)
   
   self.components.console = Geyser.MiniConsole:new({

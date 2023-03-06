@@ -71,10 +71,14 @@ end
 -- @param color title text color
 -- @param format title format
 function Dockable.Container:setTitle(text, color, format)
-    self.titleFormat = format or self.titleFormat or "c"
+    self.titleFormat = (format ~= "v" and format) or self.titleFormat or "c"
     self.titleText = text or self.titleText or string.format("%s - Dockable Container")
     self.titleTxtColor = color or self.titleTxtColor or "white"
-    self.titleLabel:echo(self.titleText, self.titleTxtColor, self.titleFormat)
+    if format == "v" then
+        self.titleLabel:echo(string.gsub(self.titleText, ".-", "%1<br>"), self.titleTxtColor, self.titleFormat)
+    else
+        self.titleLabel:echo(self.titleText, self.titleTxtColor, self.titleFormat)
+    end
 end
 
 
@@ -648,25 +652,29 @@ function Dockable.Container:minimize()
     self.Inside:hide()
 
     if self.minimizeDirection == "bottom" then
-      local y = self:get_y()
-      self:resize(nil, newSize)
-      self:move(nil, y + h - newSize)
-      self.origPolicy = self.v_policy
-      self.v_policy = Geyser.Fixed
+        local y = self:get_y()
+        self:resize(nil, newSize)
+        self:move(nil, y + h - newSize)
+        self.origPolicy = self.v_policy
+        self.v_policy = Geyser.Fixed
     elseif self.minimizeDirection == "right" then
-      local x = self:get_x()
-      self:resize(newSize, nil)
-      self:move(x + w - newSize, nil)
-      self.origPolicy = self.h_policy
-      self.h_policy = Geyser.Fixed 
+        self.titleLabel:resize(self.titleLabel:get_height(), "100%")
+        self:setTitle(nil, nil, "v")
+        local x = self:get_x()
+        self:resize(newSize, nil)
+        self:move(x + w - newSize, nil)
+        self.origPolicy = self.h_policy
+        self.h_policy = Geyser.Fixed
     elseif self.minimizeDirection == "left" then
-      self:resize(newSize, nil)
-      self.origPolicy = self.h_policy
-      self.h_policy = Geyser.Fixed
+        self.titleLabel:resize(self.titleLabel:get_height(), "100%")
+        self:setTitle(nil, nil, "v")
+        self:resize(newSize, nil)
+        self.origPolicy = self.h_policy
+        self.h_policy = Geyser.Fixed
     else
-      self:resize(nil, newSize)
-      self.origPolicy = self.v_policy
-      self.v_policy = Geyser.Fixed
+        self:resize(nil, newSize)
+        self.origPolicy = self.v_policy
+        self.v_policy = Geyser.Fixed
     end
     
     self.minimized = true
@@ -690,11 +698,15 @@ function Dockable.Container:restore()
         self.origy = self.origy or y1 - self:get_height() + offset
         self:move(nil, self.origy)
       elseif self.minimizeDirection == "right" then
+        self.titleLabel:resize("100%", "1.5c")
+        self:setTitle(nil, nil, "c")
         local x = self:get_x()
         self:resize(self.origw,nil)
         self.origx = self.origx or x1 - self:get_width() + offset
         self:move(self.origx, nil)
       elseif self.minimizeDirection == "left" then
+        self.titleLabel:resize("100%", "1.5c")
+        self:setTitle(nil, nil, "c")
         self:resize(self.origw,nil)
       else
         self:resize(nil,self.origh)
@@ -832,6 +844,16 @@ function Dockable.Container:add(window, cons)
     if not self.defer_updates then
       self:organize()
     end
+end
+
+function Dockable.Container:remove(window)
+    if self.goInside then
+        self.Inside:remove(window)
+    else
+            --add2 inheritance set to true
+        self:remove(window)
+    end
+    self:organize()
 end
 
 -- overridden show function to prevent to show the right click menu on show
