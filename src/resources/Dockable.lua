@@ -109,11 +109,6 @@ function Dockable.Container:onClick(label, event)
     end
     if event.button == "RightButton" then
 
-        if not self.customItemsLabel.nestedLabels then
-            label:hideMenuLabel("customItemsLabel")
-        else
-            label:showMenuLabel("customItemsLabel")
-        end
     end
     label:onRightClick(event)
 end
@@ -729,15 +724,13 @@ end
 -- @param self the container itself
 -- @param menu name of the menu
 -- @param onClick function which will be executed onClick
-local function createMenus(self, parent, name, func)
+function Dockable.Container:createMenus(parent, name, func)
     local label = self.adjLabel
     local menuTxt = self.Locale[name] and self.Locale[name].message or name
     label:addMenuLabel(name, parent)
     label:findMenuElement(parent.."."..name):echo(menuTxt, "nocolor")
     label:setMenuAction(parent.."."..name, func, self, name)
 end
-
-
 
 -- internal function to create the Minimize/Close and the right click Menu Labels
 function Dockable.Container:createLabels()
@@ -757,30 +750,43 @@ function Dockable.Container:createLabels()
         x = -x, y=4, width = self.buttonsize, height = self.buttonsize, fontSize = self.buttonFontSize, name = self.name.."minimizeLabel"
 
     },self)
-    self.minimizeLabel:echo("<center>-</center>")
+    self.minimizeLabel:echo("<center></center>")
+end
+
+local function updateMenuLabel(self, conf)
+    if type(conf) ~= "table" then return end
+    local msg = conf.name
+    if type(conf.message) == "function" then
+        local txt = conf.message()
+        if type(txt) == "string" then msg = txt end
+    end
+    
+    self.adjLabel:findMenuElement(conf.name):echo(msg, "nocolor")
+end
+
+function Dockable.Container:addMenuItem(conf)
+
+    local parent, name = string.match(conf.name, "(.-)[.]?([^.]+)$")
+
+    if name == nil or name == "" then return end
+    if parent == "" then parent = nil end
+
+    self.adjLabel:addMenuLabel(name, parent)
+
+    updateMenuLabel(self, conf)
+    if type(conf.handler) == "function" then
+        self.adjLabel:setMenuAction(name, function ()
+            conf.handler()
+            if type(conf.message) == "function" then updateMenuLabel(self, conf) end
+            if conf.closeOnClick then closeAllLevels(self.rCLabel) end
+        end)
+    end
 end
 
 -- internal function to create the right click menu
 function Dockable.Container:createRightClickMenu()
-    local items = { "lockLabel", "minLabel"}
-
-    for k, m in pairs(self.customMenus) do
-        if type(k) == "string" and type(m) == "table" then
-            items[#items+1] = "customMenu"..k
-        end
-    end
-
-    -- createMenus(self, "customItemsLabel", name, function (arg1, arg2)
-    --     self:customMenu(arg2)
-    -- end)
-
-    items[#items+1] = "lockStylesLabel"
-    items[#items+1] = {}
-    items[#items+1] = "customItemsLabel"
-    items[#items+1] = {}
-
     self.adjLabel:createRightClickMenu({
-        MenuItems = items,
+        MenuItems = {},
         Style = self.menuStyleMode,
         MenuStyle = self.menustyle,
         MenuWidth = self.ParentMenuWidth,
@@ -791,25 +797,44 @@ function Dockable.Container:createRightClickMenu()
     })
 
     self.rCLabel = self.adjLabel.rightClickMenu
-    for k,v in pairs(self.rCLabel.MenuLabels) do
-        self[k] = v
-    end
 
-    -- for k, m in pairs(self.customMenus) do
-    --     if type(k) == "string" and type(m) == "table" then
-    --         items[#items+1] = "customMenu"..k
-    --     end
-    -- end
 
-end
-
--- internal function to set the text on the right click menu labels
-function Dockable.Container:echoRightClickMenu()
-    for k,v in ipairs(self.adjLabel.rightClickMenu.MenuItems) do
-        if type(v) == "string" then
-            self[v]:echo(self[v].txt, "nocolor")
+    -- iterate over custom menus
+    for k, m in pairs(self.menu) do
+        if type(k) == "string" then 
+            if m.name == nil or m.name == "" then m.name = k end
+            self:addMenuItem(m)
         end
     end
+
+
+    -- local items = { "lockLabel", "minLabel"}
+
+   
+
+    -- createMenus(self, "customItemsLabel", name, function (arg1, arg2)
+    --     self:customMenu(arg2)
+    -- -- end)
+    -- if self.enableCustomLockStyles then
+    --     items[#items+1] = "lockStylesLabel"
+    --     items[#items+1] = {}
+    -- end
+
+    -- if self.enableBasicCustomMenus then
+    --     items[#items+1] = "customItemsLabel"
+    --     items[#items+1] = {}
+    -- end
+
+
+
+    
+    -- for k,v in pairs(self.rCLabel.MenuLabels) do
+    --     -- TODO: Refactor this out. Feels very unsafe.
+    --     self[k] = v
+    -- end
+
+
+
 end
 
 --- function to change the right click menu style
@@ -940,20 +965,6 @@ function Dockable.Container:newLockStyle(name, func)
     end
 end
 
---- creates a new custom menu item
--- @param name Name of the new menu item
--- @param func function of the new custom menu item
-function Dockable.Container:newCustomItem(name, func)
-    self.customItems = self.customItems or {}
-    if self.customItems[name] then
-        return
-    end
-    self.customItems[#self.customItems + 1] = {name, func}
-    self.customItems[name] = self.customItems[#self.customItems]
-    createMenus(self, "customItemsLabel", name, function (arg1, arg2)
-        self:customMenu(arg2)
-    end)
-end
 --- enablesAutoSave normally only used internally
 -- only useful if autoSave was set to false before
 function Dockable.Container:enableAutoSave()
@@ -1011,7 +1022,17 @@ function Dockable.Container:new(cons,container)
     me.padding = me.padding or 1
     me.attachedMargin = me.attachedMargin or 5
     me.permanentBorders = me.permanentBorders or {}
-    me.customMenus = me.customMenus or {}
+    me.locked =  me.locked or false
+
+    me.menu = me.menu or {}
+
+    if me.menu.lockToggle == nil then 
+        me.menu.lockToggle = {
+            closeOnClick = true,
+            message = function() if me.locked then return "  Unlock" else return "  Lock" end end,
+            handler = function () if me.locked then me:unlockContainer() else me:lockContainer() end end
+        }
+    end
 
     -- DOCKABLE OPTS
     me.minimizeDirection = me.minimizeDirection or "top"
@@ -1030,27 +1051,23 @@ function Dockable.Container:new(cons,container)
     me:createContainers()
     me.att = me.att or {}
     me:createLabels()
+
     me:createRightClickMenu()
 
     me:globalLockStyles()
     me.minimized =  me.minimized or false
-    me.locked =  me.locked or false
+    
 
-    me.lockLabel.txt = me.lockLabel.txt or [[<font size="5" face="Noto Emoji">🔒</font>]] .. self.Locale.lock.message
-    me.minLabel.txt = me.minLabel.txt or [[<font size="5" face="Noto Emoji">🗕</font>]] ..self.Locale.min_restore.message
-    me.lockStylesLabel.txt = me.lockStylesLabel.txt or [[<font size="5" face="Noto Emoji">🖌</font>]]..self.Locale.lockstyle.message
-    me.customItemsLabel.txt = me.customItemsLabel.txt or [[<font size="5" face="Noto Emoji">🖇</font>]]..self.Locale.custom.message
     -- TODO: style title label using themes
     me.adjLabel:setStyleSheet(me.adjLabelstyle)
     if me.allowClose then me.exitLabel:setStyleSheet(me.buttonstyle) end
     me.minimizeLabel:setStyleSheet(me.buttonstyle)
-    me:echoRightClickMenu()
 
     me.adjLabel:setClickCallback(function (e) me:onClick(me.adjLabel, e) end)
     me.adjLabel:setReleaseCallback(function (e) me:onRelease(me.adjLabel, e) end)
     me.adjLabel:setMoveCallback(function (e) me:onMove(me.adjLabel, e) end)
-    me.minLabel:setClickCallback(function (e) me:onClickMin() end)
-    me.lockLabel:setClickCallback(function (e) me:onClickL() end)
+    -- me.minLabel:setClickCallback(function (e) me:onClickMin() end)
+    -- me.lockLabel:setClickCallback(function (e) me:onClickL() end)
     me.origh = me.height
 
     if me.allowClose then
@@ -1201,7 +1218,7 @@ function Dockable.Container:organize()
 end
 
 function Dockable.Container:addOrganizerMenu()
-    self:newCustomItem("Reset Children", function(self) resetChildren(self.Inside) end)
+    -- self:newCustomItem("Reset Children", function(self) resetChildren(self.Inside) end)
 end
 
 
