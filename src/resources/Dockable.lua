@@ -5,6 +5,7 @@ Dockable.Vertical = 2
 
 local resourcesDir = (...):match("(.-)[^%.]+$")
 Dockable.Insider = Dockable.Insider or require(resourcesDir .. "DockableInsider")
+local TitleBar = require(resourcesDir.."titlebar")
 
 --------------------------------------
 --                                  --
@@ -71,23 +72,8 @@ end
 -- @param color title text color
 -- @param format title format
 function Dockable.Container:setTitle(text, color, format)
-    self.titleFormat = (format ~= "v" and format) or self.titleFormat or "c"
-    self.titleText = text or self.titleText or string.format("%s - Dockable Container")
-    self.titleTxtColor = color or self.titleTxtColor or "white"
-    if format == "v" then
-        self.titleLabel:echo(string.gsub(self.titleText, ".-", "%1<br>"), self.titleTxtColor, self.titleFormat)
-    else
-        self.titleLabel:echo(self.titleText, self.titleTxtColor, self.titleFormat)
-    end
-end
-
-
---- function to reset your adjustable containers title to default
-function Dockable.Container:resetTitle()
-    self.titleText = nil
-    self.titleTxtColor = nil
-    self.titleFormat = nil
-    self:setTitle()
+    -- TODO: Determine if we even need this here.
+    self.titleBar:setTitle()
 end
 
 -- internal function to handle the onClick event of main Dockable.Container Label
@@ -107,9 +93,7 @@ function Dockable.Container:onClick(label, event)
         if self.minimized then adjustInfo.move = true end
         adjust_Info(self, label, event)
     end
-    if event.button == "RightButton" then
 
-    end
     label:onRightClick(event)
 end
 
@@ -262,7 +246,7 @@ function Dockable.Container:onMove (label, event)
                 self:move(tx, ty)
                 
                 local minw, minh = 0,0
-                if (self.container == Geyser or self.container.type == "dockable.insider") and not self.noLimit then minw, minh = 75,25 end
+                if (self.container == Geyser or self.container.type == "dockable.insider") and not self.noLimit then minw, minh = 75,self.titleBar:get_height() end
                 tw,th = max(minw,tw), max(minh,th)
                 tw,th = make_percent(tw/winw), make_percent(th/winh)
                 self:resize(tw, th)
@@ -502,22 +486,25 @@ end
 -- creates the adjustable label and the container where all the elements will be put in
 function Dockable.Container:createContainers()
 
-    self.titleLabel = Geyser.Label:new({
-        x = self.padding,
-        y = self.padding,
-        height = "1.5c",
-        width = "100%",
-        name = self.name..".titleLabel"
-    },self)
+    local controls = {}
 
-    self.Inside = Dockable.Insider:new({
-        x = self.padding,
-        y = self.titleLabel:get_y() - self:get_y() + self.titleLabel:get_height(),
-        height = "-"..self.padding,
-        width = "-"..self.padding,
-        name = self.name..".InsideContainer",
-        direction = self.organized,
-    },self)
+    if self.allowClose then
+        controls.close = {
+            message = "<center></center>",
+            hander = function ()
+                if type(self.closeCallback) == "function" then
+                    self:closeCallback()
+                else
+                    self:hideObj()
+                end
+            end
+        }
+    end
+
+    controls.minimize = {
+        message = "<center></center>",
+        handler = function () self:onClickMin() end
+    }
 
     self.adjLabel = Geyser.Label:new({
         x = "0",
@@ -525,7 +512,26 @@ function Dockable.Container:createContainers()
         height = "100%",
         width = "100%",
         name = self.name..".adjLabel"
-    },self)
+    }, self)
+
+    self.titleBar = TitleBar:new({
+        x = self.padding,
+        y = self.padding,
+        name = self.name..".titleBar",
+        title = self.titleText,
+        controls = controls,
+    }, self)
+
+    self.Inside = Dockable.Insider:new({
+        x = self.padding,
+        y = self.titleBar:get_y() - self:get_y() + self.titleBar:get_height(),
+        height = "-"..self.padding,
+        width = "-"..self.padding,
+        name = self.name..".InsideContainer",
+        direction = self.organized,
+    }, self)
+
+
     
 end
 
@@ -579,14 +585,13 @@ end
 -- what means that the container is moveable/resizable by mouse again 
 function Dockable.Container:unlockContainer()
     closeAllLevels(self.rCLabel)
-
-    self.titleLabel:resize("-"..self.padding)
+    -- TODO: Account for title bar direction here
+    self.titleBar:resize("-"..self.padding)
     self.Inside:resize("-"..self.padding,"-"..self.padding)
-    self.titleLabel:move(self.padding, self.padding)
-    self.Inside:move(self.padding, self.titleLabel:get_y() - self:get_y() + self.titleLabel:get_height())
+    self.titleBar:move(self.padding, self.padding)
+    self.Inside:move(self.padding, self.titleBar:get_y() - self:get_y() + self.titleBar:get_height())
     self.adjLabel:setStyleSheet(self.adjLabelstyle)
-    if self.allowClose then self.exitLabel:show() end
-    self.minimizeLabel:show()
+
     self.locked = false
     self:setTitle()
 end
@@ -639,10 +644,10 @@ function Dockable.Container:minimize()
     self.origw = self.width
     self.origy = self.y
     self.origx = self.x
-    
+
     local x1, y1, h, w = self:get_x(), self:get_y(), self:get_height(), self:get_width()
-    
-    local newSize = self.buttonsize + 10
+
+    local newSize = self.titleBar:calcDimension()
 
     self.Inside:hide()
 
@@ -653,16 +658,15 @@ function Dockable.Container:minimize()
         self.origPolicy = self.v_policy
         self.v_policy = Geyser.Fixed
     elseif self.minimizeDirection == "right" then
-        self.titleLabel:resize(self.titleLabel:get_height(), "100%")
-        self:setTitle(nil, nil, "v")
+        self.titleBar:setDirection(TitleBar.Vertical)
+
         local x = self:get_x()
-        self:resize(newSize, nil)
         self:move(x + w - newSize, nil)
+        self:resize(newSize, nil)
         self.origPolicy = self.h_policy
         self.h_policy = Geyser.Fixed
     elseif self.minimizeDirection == "left" then
-        self.titleLabel:resize(self.titleLabel:get_height(), "100%")
-        self:setTitle(nil, nil, "v")
+        self.titleBar:setDirection(TitleBar.Vertical)
         self:resize(newSize, nil)
         self.origPolicy = self.h_policy
         self.h_policy = Geyser.Fixed
@@ -671,12 +675,13 @@ function Dockable.Container:minimize()
         self.origPolicy = self.v_policy
         self.v_policy = Geyser.Fixed
     end
-    
+
     self.minimized = true
     self:adjustBorder()
     self:adjustConnectedContainers()
     if self.container.organize ~= nil then
       self.container:organize()
+      self.titleBar.controlBox:organize()
     end
 end
 
@@ -685,23 +690,20 @@ function Dockable.Container:restore()
     if self.minimized == true then
       self.origh = self.origh or "25%"
       self.origw = self.origw or "25%"
-      local x1, y1, offset = self:get_x(), self:get_y(), self.buttonsize + 10
+      local x1, y1 = self:get_x(), self:get_y()
       self.Inside:show()
       
       if self.minimizeDirection == "bottom" then
         self:resize(nil,self.origh)
-        self.origy = self.origy or y1 - self:get_height() + offset
+        self.origy = self.origy or y1 - self:get_height()
         self:move(nil, self.origy)
       elseif self.minimizeDirection == "right" then
-        self.titleLabel:resize("100%", "1.5c")
-        self:setTitle(nil, nil, "c")
-        local x = self:get_x()
+        self.titleBar:setDirection(TitleBar.Horizontal)
         self:resize(self.origw,nil)
-        self.origx = self.origx or x1 - self:get_width() + offset
+        self.origx = self.origx or x1 - self:get_width()
         self:move(self.origx, nil)
       elseif self.minimizeDirection == "left" then
-        self.titleLabel:resize("100%", "1.5c")
-        self:setTitle(nil, nil, "c")
+        self.titleBar:setDirection(TitleBar.Horizontal)
         self:resize(self.origw,nil)
       else
         self:resize(nil,self.origh)
@@ -716,6 +718,7 @@ function Dockable.Container:restore()
       self:adjustConnectedContainers()
       if self.container.organize ~= nil then
         self.container:organize()
+        self.titleBar.controlBox:organize()
       end
     end
 end
@@ -730,27 +733,6 @@ function Dockable.Container:createMenus(parent, name, func)
     label:addMenuLabel(name, parent)
     label:findMenuElement(parent.."."..name):echo(menuTxt, "nocolor")
     label:setMenuAction(parent.."."..name, func, self, name)
-end
-
--- internal function to create the Minimize/Close and the right click Menu Labels
-function Dockable.Container:createLabels()
-    local x = self.buttonsize * 1.4
-    if self.allowClose then
-      self.exitLabel = Geyser.Label:new({
-          x = -x, y=4, width = self.buttonsize, height = self.buttonsize, fontSize = self.buttonFontSize, name = self.name.."exitLabel"
-  
-      },self)
-      self.exitLabel:echo("<center>x</center>")
-      x = self.buttonsize * 2.6
-    end
-    
-
-
-    self.minimizeLabel = Geyser.Label:new({
-        x = -x, y=4, width = self.buttonsize, height = self.buttonsize, fontSize = self.buttonFontSize, name = self.name.."minimizeLabel"
-
-    },self)
-    self.minimizeLabel:echo("<center></center>")
 end
 
 local function updateMenuLabel(self, conf)
@@ -862,7 +844,7 @@ function Dockable.Container:add(window, cons)
            Geyser.add(self, window, cons)
         else
             --add2 inheritance set to true
-            self:add2(window, cons, true, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
+            self:add2(window, cons, true, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider", "titlebar"})
         end
     end
     
@@ -934,19 +916,17 @@ Dockable.Container.Attached = Dockable.Container.Attached or {}
 function Dockable.Container:globalLockStyles()
     self.lockStyles = self.lockStyles or {}
     self:newLockStyle("standard", function (s)
-        s.titleLabel:show()
-        s.Inside:move(s.padding, s.titleLabel:get_y() - s:get_y() + s.titleLabel:get_height())
+        s.titleBar:show()
+        s.Inside:move(s.padding, s.titleBar:get_y() - s:get_y() + s.titleBar:get_height())
         s.Inside:resize("-"..s.padding,"-"..s.padding)
         s.adjLabel:setStyleSheet(s.adjLabelstyle)
-        s.minimizeLabel:show()
     end)
 
     self:newLockStyle("untitled",  function (s)
-        s.titleLabel:hide()
+        s.titleBar:hide()
         s.Inside:move(s.padding, s.padding)
         s.Inside:resize("-"..s.padding,"-"..s.padding)
         s.adjLabel:setStyleSheet(s.adjLabelstyle)
-        s.minimizeLabel:hide()
     end)
 
 end
@@ -1019,14 +999,14 @@ function Dockable.Container:new(cons,container)
     me.MenuFontSize = me.MenuFontSize or "8"
     me.buttonsize = me.buttonsize or "15"
     me.buttonFontSize = me.buttonFontSize or "8"
-    me.padding = me.padding or 1
+    me.padding = me.padding or 0
     me.attachedMargin = me.attachedMargin or 5
     me.permanentBorders = me.permanentBorders or {}
     me.locked =  me.locked or false
 
     me.menu = me.menu or {}
 
-    if me.menu.lockToggle == nil then 
+    if me.menu.lockToggle == nil then
         me.menu.lockToggle = {
             closeOnClick = true,
             message = function() if me.locked then return "  Unlock" else return "  Lock" end end,
@@ -1042,15 +1022,9 @@ function Dockable.Container:new(cons,container)
     background-color: rgba(0,0,0,0%);]]
     me.unlockedSideStyle = me.unlockedSideStyle or me.padding.."px solid #282828"
     me.menuStyleMode = "light"
-    -- TODO: style these using themes
-    me.buttonstyle= me.buttonstyle or [[
-    QLabel{ border-radius: 2px; background-color: hsv(0,0,12);}
-    QLabel::hover{ background-color: hsv(0,0,14);}
-    ]]
 
     me:createContainers()
     me.att = me.att or {}
-    me:createLabels()
 
     me:createRightClickMenu()
 
@@ -1060,8 +1034,6 @@ function Dockable.Container:new(cons,container)
 
     -- TODO: style title label using themes
     me.adjLabel:setStyleSheet(me.adjLabelstyle)
-    if me.allowClose then me.exitLabel:setStyleSheet(me.buttonstyle) end
-    me.minimizeLabel:setStyleSheet(me.buttonstyle)
 
     me.adjLabel:setClickCallback(function (e) me:onClick(me.adjLabel, e) end)
     me.adjLabel:setReleaseCallback(function (e) me:onRelease(me.adjLabel, e) end)
@@ -1069,17 +1041,6 @@ function Dockable.Container:new(cons,container)
     -- me.minLabel:setClickCallback(function (e) me:onClickMin() end)
     -- me.lockLabel:setClickCallback(function (e) me:onClickL() end)
     me.origh = me.height
-
-    if me.allowClose then
-        if type(me.closeCallback) == "function" then
-            me.exitLabel:setClickCallback(function (e)
-                me:closeCallback(e)
-            end)
-        else
-            me.exitLabel:setClickCallback(function (e) me:hideObj() end)
-        end
-    end
-    me.minimizeLabel:setClickCallback(function (e) me:onClickMin() end)
 
     me.goInside = true
     me.titleTxtColor = me.titleTxtColor or "white"
@@ -1090,7 +1051,7 @@ function Dockable.Container:new(cons,container)
     me.minw = me.minw or 0
     me.minh = me.minh or 0
     
-    if (me.container == Geyser or me.container.type == "dockable.insider") and not me.noLimit then me.minw, me.minh = 75,30 end
+    if (me.container == Geyser or me.container.type == "dockable.insider") and not me.noLimit then me.minw, me.minh = 75,me.titleBar:get_height() end
     
     if not(me.raiseOnClick == false) then
         me.raiseOnClick = true

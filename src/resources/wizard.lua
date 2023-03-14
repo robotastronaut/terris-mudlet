@@ -87,19 +87,19 @@ function Wizard:right()
 end
 
 function Wizard:top()
-  debugc("terris.wizard.top()")
+  -- debugc("terris.wizard.top()")
   self.containers.top:render()
 
 end
 
 function Wizard:footer()
-  debugc("terris.wizard.footer()")
+  -- debugc("terris.wizard.footer()")
   self.containers.footer = Footer:new()
   self.containers.footer:render()
 end
 
 function Wizard:render()
-  printDebug("terris.Wizard: rendering")
+  -- printDebug("terris.Wizard: rendering")
   local mainWidth, mainHeight = getMainWindowSize()
   self.layout.mainHeight = mainHeight
   self.layout.mainWidth = mainWidth
@@ -107,7 +107,7 @@ function Wizard:render()
   self:footer()
   self:right()
   for name, child in pairs(self.children) do
-    printDebug("terris.Wizard: rendering child "..name)
+    -- printDebug("terris.Wizard: rendering child "..name)
     child:render()
   end
 end

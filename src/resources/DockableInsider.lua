@@ -12,7 +12,7 @@ end
 
 function Insider:add (window, cons)
   if self.useAdd2 then
-    Geyser.add2(self, window, cons, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider"})
+    Geyser.add2(self, window, cons, {"hbox", "vbox", "adjustablecontainer", "dockable.container", "dockable.insider", "floatbox"})
   else
     Geyser.add(self, window, cons)
   end
@@ -40,19 +40,15 @@ function Insider:organizeH()
     if window.h_policy == Geyser.Fixed or window.v_policy == Geyser.Fixed then
       self.contains_fixed = true
     end
-    window:move(start_x.."%", "0%")
+
     if window.h_policy == Geyser.Dynamic then
       width = window_width * window.h_stretch_factor
       if window.width ~= width .. "%" then
-        window:resize(width .. "%", nil)
+        window:resize(width .. "%", "100%")
       end
     end
-    if window.v_policy == Geyser.Dynamic then
-      height = 100
-      if window.height ~= height .. "%" then
-        window:resize(nil, height .. "%")
-      end
-    end
+    window:move(start_x.."%", "0%")
+
     start_x = start_x + width
     if window.type == "dockable.container" then
       if i < #self.windows then
@@ -163,6 +159,7 @@ end
 
 function Insider:reposition()
   Geyser.Container.reposition(self)
+  
   if self.contains_fixed then
     self:organize()
   end
@@ -295,11 +292,11 @@ function Insider:resize_dockable(window, adjustInfo, dx, dy)
   if adjustInfo.right and self.direction == Insider.Horizontal then
     tw = math.max(math.min(w2, max.w), window.minw)
     window.h_policy = Geyser.Fixed
-    window:resize(make_percent(tw/winw))
+    local pct = make_percent(tw/winw)
+    window:resize(pct)
   end
 
   self:organize()
-
 end
 
 Insider.parent = Geyser.Container

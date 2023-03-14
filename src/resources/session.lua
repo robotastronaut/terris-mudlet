@@ -55,11 +55,11 @@ function Session:save_active_character()
 end
 
 function Session:load_character(base)
-  echo("LOADING")
-  display(base)
+  -- echo("LOADING")
+  -- display(base)
   local stored = db:fetch(self.data.characters, db:eq(self.data.characters.name, base.name))
-  echo("STORED")
-  display(stored)
+  -- echo("STORED")
+  -- display(stored)
   if not next(stored) then return Character:new(base) end
 
   -- TODO schema check here?
