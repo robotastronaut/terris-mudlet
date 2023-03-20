@@ -723,31 +723,23 @@ function Dockable.Container:restore()
     end
 end
 
--- internal function to create the menu labels for lockstyle and custom items
--- @param self the container itself
--- @param menu name of the menu
--- @param onClick function which will be executed onClick
-function Dockable.Container:createMenus(parent, name, func)
-    local label = self.adjLabel
-    local menuTxt = self.Locale[name] and self.Locale[name].message or name
-    label:addMenuLabel(name, parent)
-    label:findMenuElement(parent.."."..name):echo(menuTxt, "nocolor")
-    label:setMenuAction(parent.."."..name, func, self, name)
-end
-
 local function updateMenuLabel(self, conf)
     if type(conf) ~= "table" then return end
     local msg = conf.name
     if type(conf.message) == "function" then
         local txt = conf.message()
         if type(txt) == "string" then msg = txt end
+    elseif type(conf.message) == "string" then
+        msg = conf.message
     end
     
     self.adjLabel:findMenuElement(conf.name):echo(msg, "nocolor")
+    if type(conf.style) == "string" then
+        self.adjLabel:findMenuElement(conf.name):setStyleSheet(conf.style)
+    end
 end
 
 function Dockable.Container:addMenuItem(conf)
-
     local parent, name = string.match(conf.name, "(.-)[.]?([^.]+)$")
 
     if name == nil or name == "" then return end
@@ -788,34 +780,6 @@ function Dockable.Container:createRightClickMenu()
             self:addMenuItem(m)
         end
     end
-
-
-    -- local items = { "lockLabel", "minLabel"}
-
-   
-
-    -- createMenus(self, "customItemsLabel", name, function (arg1, arg2)
-    --     self:customMenu(arg2)
-    -- -- end)
-    -- if self.enableCustomLockStyles then
-    --     items[#items+1] = "lockStylesLabel"
-    --     items[#items+1] = {}
-    -- end
-
-    -- if self.enableBasicCustomMenus then
-    --     items[#items+1] = "customItemsLabel"
-    --     items[#items+1] = {}
-    -- end
-
-
-
-    
-    -- for k,v in pairs(self.rCLabel.MenuLabels) do
-    --     -- TODO: Refactor this out. Feels very unsafe.
-    --     self[k] = v
-    -- end
-
-
 
 end
 
@@ -940,9 +904,6 @@ function Dockable.Container:newLockStyle(name, func)
     end
     self.lockStyles[#self.lockStyles + 1] = {name, func}
     self.lockStyles[name] = self.lockStyles[#self.lockStyles]
-    if self.lockStylesLabel then
-        createMenus(self, "lockStylesLabel", name, function (lockNr, lockStyle) self:lockContainer(lockNr, lockStyle) end)
-    end
 end
 
 --- enablesAutoSave normally only used internally
@@ -1004,117 +965,130 @@ function Dockable.Container:new(cons,container)
     me.permanentBorders = me.permanentBorders or {}
     me.locked =  me.locked or false
 
-    me.menu = me.menu or {}
+    if not string.find(me.name, ".*Class") then
 
-    if me.menu.lockToggle == nil then
-        me.menu.lockToggle = {
-            closeOnClick = true,
-            message = function() if me.locked then return "  Unlock" else return "  Lock" end end,
-            handler = function () if me.locked then me:unlockContainer() else me:lockContainer() end end
+        local menu = {
+            controlHeader = {
+                closeOnClick = false,
+                message = "<center>CONTROLS</center>",
+                style = [[QLabel::hover{ background-color: #282828;  color: #808080;} QLabel::!hover{color: #707070; background-color:#181818;}]],
+            },
+            lockToggle = {
+                closeOnClick = true,
+                message = function() if me.locked then return " Unlock" else return " Lock" end end,
+                handler = function () if me.locked then me:unlockContainer() else me:lockContainer() end end,
+                style = [[QLabel::hover{ margin-left: 2px; background-color: rgba(0,150,255,100%); color: white;} QLabel::!hover{ margin-left: 2px; color: black; background-color: rgba(240,240,240,100%);}]],
+            }
         }
-    end
+        -- TODO: Create a menu manager
+        if type(me.menu) == "table" then
+            for k,v in pairs(me.table) do
+                menu[k] = v
+            end
+        end
 
-    -- DOCKABLE OPTS
-    me.minimizeDirection = me.minimizeDirection or "top"
-    me.allowClose = me.allowClose or false
+        me.menu = menu
 
-    me.adjLabelstyle = me.adjLabelstyle or [[
-    background-color: rgba(0,0,0,0%);]]
-    me.unlockedSideStyle = me.unlockedSideStyle or me.padding.."px solid #282828"
-    me.menuStyleMode = "light"
+        -- DOCKABLE OPTS
+        me.minimizeDirection = me.minimizeDirection or "top"
+        me.allowClose = me.allowClose or false
 
-    me:createContainers()
-    me.att = me.att or {}
+        me.adjLabelstyle = me.adjLabelstyle or [[background-color: rgba(0,0,0,0%);]]
+        me.unlockedSideStyle = me.unlockedSideStyle or me.padding.."px solid #282828"
+        me.menuStyleMode = "light"
 
-    me:createRightClickMenu()
+        me:createContainers()
+        me.att = me.att or {}
 
-    me:globalLockStyles()
-    me.minimized =  me.minimized or false
-    
+        me:createRightClickMenu()
 
-    -- TODO: style title label using themes
-    me.adjLabel:setStyleSheet(me.adjLabelstyle)
+        me:globalLockStyles()
+        me.minimized =  me.minimized or false
+        
 
-    me.adjLabel:setClickCallback(function (e) me:onClick(me.adjLabel, e) end)
-    me.adjLabel:setReleaseCallback(function (e) me:onRelease(me.adjLabel, e) end)
-    me.adjLabel:setMoveCallback(function (e) me:onMove(me.adjLabel, e) end)
-    -- me.minLabel:setClickCallback(function (e) me:onClickMin() end)
-    -- me.lockLabel:setClickCallback(function (e) me:onClickL() end)
-    me.origh = me.height
+        -- TODO: style title label using themes
+        me.adjLabel:setStyleSheet(me.adjLabelstyle)
 
-    me.goInside = true
-    me.titleTxtColor = me.titleTxtColor or "white"
-    me.titleText = me.titleText or me.name.." - Dockable Container"
-    me:setTitle()
-    me.lockStyle = me.lockStyle or "standard"
-    me.noLimit = me.noLimit or false
-    me.minw = me.minw or 0
-    me.minh = me.minh or 0
-    
-    if (me.container == Geyser or me.container.type == "dockable.insider") and not me.noLimit then me.minw, me.minh = 75,me.titleBar:get_height() end
-    
-    if not(me.raiseOnClick == false) then
-        me.raiseOnClick = true
-    end
+        me.adjLabel:setClickCallback(function (e) me:onClick(me.adjLabel, e) end)
+        me.adjLabel:setReleaseCallback(function (e) me:onRelease(me.adjLabel, e) end)
+        me.adjLabel:setMoveCallback(function (e) me:onMove(me.adjLabel, e) end)
 
-    if not Dockable.Container.all[me.name] then
-        Dockable.Container.all_windows[#Dockable.Container.all_windows + 1] = me.name
-    else
-        --prevent showing the container on recreation if hidden is true
-        if Dockable.Container.all[me.name].hidden then
+        me.origh = me.height
+
+        me.goInside = true
+        me.titleTxtColor = me.titleTxtColor or "white"
+        me.titleText = me.titleText or me.name.." - Dockable Container"
+        me:setTitle()
+        me.lockStyle = me.lockStyle or "standard"
+        me.noLimit = me.noLimit or false
+        me.minw = me.minw or 0
+        me.minh = me.minh or 0
+        
+        if (me.container == Geyser or me.container.type == "dockable.insider") and not me.noLimit then me.minw, me.minh = 75,me.titleBar:get_height() end
+        
+        if not(me.raiseOnClick == false) then
+            me.raiseOnClick = true
+        end
+
+        if not Dockable.Container.all[me.name] then
+            Dockable.Container.all_windows[#Dockable.Container.all_windows + 1] = me.name
+        else
+            --prevent showing the container on recreation if hidden is true
+            if Dockable.Container.all[me.name].hidden then
+                me:hide()
+            end
+            if Dockable.Container.all[me.name].auto_hidden then
+                me:hide(true)
+            end
+            -- detach if setting at creation changed
+            Dockable.Container.all[me.name]:detach()
+        end
+
+        if me.minimized then
+            me:minimize()
+        end
+
+        if me.locked then
+            me:lockContainer()
+        end
+
+        if me.attached then
+            local attached = me.attached
+            me.attached = nil
+            me:attachToBorder(attached)
+        end
+
+        -- hide/show on creation
+        if cons.hidden == true then
             me:hide()
+        elseif cons.hidden == false then
+            me:show()
         end
-        if Dockable.Container.all[me.name].auto_hidden then
-            me:hide(true)
+
+        me.organized = me.organized or Dockable.Unorganized
+
+        if me.organized ~= Dockable.Unorganized then me:addOrganizerMenu() end
+
+        if type(me.container.organize) == "function" then me.raiseOnClick = false end
+
+        -- TODO: Make this configurable
+        -- Keeping it clear
+        me.lockedSides = {}
+        if me.container.direction == Dockable.Horizontal then
+            me.lockedSides[#me.lockedSides+1] = "top"
+            me.lockedSides[#me.lockedSides+1] = "bottom"
         end
-        -- detach if setting at creation changed
-        Dockable.Container.all[me.name]:detach()
+        if me.container.direction == Dockable.Vertical then
+            me.lockedSides[#me.lockedSides+1] = "right"
+            me.lockedSides[#me.lockedSides+1] = "left"
+        end
+
+        me:applyBorderStyles()
+
+        Dockable.Container.all[me.name] = me
+        me:adjustBorder()
     end
 
-    if me.minimized then
-        me:minimize()
-    end
-
-    if me.locked then
-        me:lockContainer()
-    end
-
-    if me.attached then
-        local attached = me.attached
-        me.attached = nil
-        me:attachToBorder(attached)
-    end
-
-    -- hide/show on creation
-    if cons.hidden == true then
-        me:hide()
-    elseif cons.hidden == false then
-        me:show()
-    end
-
-    
-    me.organized = me.organized or Dockable.Unorganized
-
-    if me.organized ~= Dockable.Unorganized then me:addOrganizerMenu() end
-    
-    if type(me.container.organize) == "function" then me.raiseOnClick = false end
-
-    -- TODO: Make this configurable
-    -- Keeping it clear
-    me.lockedSides = {}
-    if me.container.direction == Dockable.Horizontal then
-        me.lockedSides[#me.lockedSides+1] = "top"
-        me.lockedSides[#me.lockedSides+1] = "bottom"
-    end
-    if me.container.direction == Dockable.Vertical then
-        me.lockedSides[#me.lockedSides+1] = "right"
-        me.lockedSides[#me.lockedSides+1] = "left"
-    end
-    
-    me:applyBorderStyles()
-
-    Dockable.Container.all[me.name] = me
-    me:adjustBorder()
     return me
 end
 

@@ -57,7 +57,22 @@ function Wizard:new(layout, terrisConfig)
   setmetatable(me, self)
   self.__index = self
 
-  me.containers.top = Comms:new(me.terris.Comms.Channels, me.terris.Comms.Events, me)
+  me.comms = Comms.Container:new({
+    name = "terris.comms.container",
+    x = 0,
+    y = 0,
+    width = "100%",
+    height = 200,
+    moveDisabled = true,
+    ignoreInvalidAttach = true,
+    organized = Dockable.Horizontal,
+    titleText = "Channels",
+    defaultChannels = me.terris.Comms.Channels,
+    defaultEvents = me.terris.Comms.Events
+  })
+
+  me.comms:attachToBorder("top")
+
   me.sessions = Session:new()
 
   return me
@@ -88,7 +103,7 @@ end
 
 function Wizard:top()
   -- debugc("terris.wizard.top()")
-  self.containers.top:render()
+  -- self.containers.top:render()
 
 end
 
