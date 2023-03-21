@@ -490,7 +490,7 @@ function Dockable.Container:createContainers()
 
     if self.allowClose then
         controls.close = {
-            message = "<center></center>",
+            message = [[<center><font face="Font Awesome 6 Pro Regular">xmark</font></center>]],
             hander = function ()
                 if type(self.closeCallback) == "function" then
                     self:closeCallback()
@@ -502,7 +502,7 @@ function Dockable.Container:createContainers()
     end
 
     controls.minimize = {
-        message = "<center></center>",
+        message = [[<center><font face="Font Awesome 6 Pro Regular">window-minimize</font></center>]],
         handler = function () self:onClickMin() end
     }
 
@@ -975,7 +975,7 @@ function Dockable.Container:new(cons,container)
             },
             lockToggle = {
                 closeOnClick = true,
-                message = function() if me.locked then return " Unlock" else return " Lock" end end,
+                message = function() if me.locked then return [[<font face="Font Awesome 6 Pro Regular">lock</font> Unlock]] else return [[<font face="Font Awesome 6 Pro Regular">lock-open</font> Lock]] end end,
                 handler = function () if me.locked then me:unlockContainer() else me:lockContainer() end end,
                 style = [[QLabel::hover{ margin-left: 2px; background-color: rgba(0,150,255,100%); color: white;} QLabel::!hover{ margin-left: 2px; color: black; background-color: rgba(240,240,240,100%);}]],
             }

@@ -115,7 +115,7 @@ function Comms.Container:addChannel(chan)
   self:addMenuItem({
     name = chan.tag.."MenuItem",
     closeOnClick = false,
-    message = function() if channel.enabled then return " "..channel.titleText else return " "..channel.titleText end end,
+    message = function() if channel.enabled then return [[<font face="Font Awesome 6 Pro Regular">square-check</font> ]]..channel.titleText else return [[<font face="Font Awesome 6 Pro Regular">square</font> ]]..channel.titleText end end,
     handler = function () channel:toggle() end,
     style = [[QLabel::hover{ margin-left: 2px; background-color: rgba(0,150,255,100%); color: white;} QLabel::!hover{ margin-left: 2px; color: black; background-color: rgba(240,240,240,100%);}]],
   })
